@@ -153,6 +153,9 @@ const { user } = useAuthentication();
           </Pressable>
         </View>
 
+
+        
+
         {/* Main content below hero */}
         <View style={styles.contentContainer}>
           <View style={styles.topHandle} />
@@ -224,39 +227,6 @@ const { user } = useAuthentication();
             {storyItems.map(renderDynamicRow)}
           </View>
 
-          {/* Party Planner section */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Party Time</Text>
-          </View>
-
-          <Pressable
-            style={[styles.partyCard, partyMode && styles.partyCardActive]}
-            onPress={handleOpenPartyDrawer}
-          >
-            <View style={styles.rowIconContainer}>
-              <Text style={styles.rowIcon}>🎉</Text>
-            </View>
-
-            <View style={styles.rowTextContainer}>
-              <Text style={styles.rowTitle}>
-                {partyMode ? "Party Mode Active" : "Party Planner"}
-              </Text>
-
-              <Text style={styles.rowDescription} numberOfLines={1}>
-                {partyMode
-                  ? "Your Party Mode settings are currently active."
-                  : "Going out tonight? Make a plan to Snap with friends."}
-              </Text>
-            </View>
-
-            {!partyMode && (
-              <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>New</Text>
-              </View>
-            )}
-
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
 
           {/* Countdowns section */}
           <View style={styles.sectionHeader}>
