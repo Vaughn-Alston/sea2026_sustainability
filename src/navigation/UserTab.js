@@ -27,7 +27,6 @@ import {
   PlayFill,
 } from "../../assets/snapchat/NavigationIcons";
 import { colors } from "../../assets/themes/colors";
-import Ionicons from "react-native-vector-icons/Ionicons";
 
 const Tab = createBottomTabNavigator();
 
@@ -88,20 +87,20 @@ export default function UserStack({ route, navigation }) {
   );
 }
 
-const getTabIcon = (routeName, focused) => {
+const getTabIcon = (routeName, focused, color) => {
   switch (routeName) {
     case "Map":
-      return focused ? <MapPinFill /> : <MapPinOutline />;
+      return focused ? <MapPinFill color={color} /> : <MapPinOutline color={color} />;
     case "Chat":
-      return focused ? <ChatFill /> : <ChatOutline />;
+      return focused ? <ChatFill color={color} /> : <ChatOutline color={color} />;
     case "Camera":
-      return focused ? <LensSearchFill /> : <CameraOutline />;
+      return focused ? <LensSearchFill color={color} /> : <CameraOutline color={color} />;
     case "Stories":
-      return focused ? <GroupFill /> : <GroupOutline />;
+      return focused ? <GroupFill color={color} /> : <GroupOutline color={color} />;
     case "Spotlight":
-      return focused ? <PlayFill /> : <PlayOutline />;
+      return focused ? <PlayFill color={color} /> : <PlayOutline color={color} />;
     case "Event":
-      return focused ? <PlayFill /> : <PlayOutline />;
+      return focused ? <PlayFill color={color} /> : <PlayOutline color={color} />;
     default:
       return null;
   }
@@ -110,14 +109,23 @@ const getTabIcon = (routeName, focused) => {
 const CustomTabBar = (props) => {
   const { state, descriptors, navigation } = props;
   const insets = useSafeAreaInsets();
+  const isCameraActive = state.routes[state.index]?.name === "Camera";
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={styles.grayRectangle}>
+    <View
+      style={[
+        styles.container,
+        isCameraActive && styles.cameraContainer,
+        { paddingBottom: insets.bottom },
+      ]}
+    >
+      <View
+        style={[
+          styles.grayRectangle,
+          isCameraActive && styles.cameraRectangle,
+        ]}
+      >
         {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const label = options.tabBarLabel || options.title || route.name;
-
           const isActive = state.index === index;
           const tabStyle = isActive ? styles.activeTab : styles.inactiveTab;
 
@@ -127,7 +135,7 @@ const CustomTabBar = (props) => {
               style={[styles.tab, tabStyle]}
               onPress={() => navigation.navigate(route.name)}
             >
-              {getTabIcon(route.name, isActive)}
+              {getTabIcon(route.name, isActive, isCameraActive ? "#fff" : null)}
             </Pressable>
           );
         })}
@@ -145,12 +153,18 @@ const styles = StyleSheet.create({
     padding: 16,
     bottom: 0,
   },
+  cameraContainer: {
+    backgroundColor: "#000",
+  },
   grayRectangle: {
     flexDirection: "row",
     justifyContent: "space-around",
     backgroundColor: colors.belowPage,
     borderRadius: 100,
     height: 48,
+  },
+  cameraRectangle: {
+    backgroundColor: "#000",
   },
   tab: {
     paddingHorizontal: 10,
