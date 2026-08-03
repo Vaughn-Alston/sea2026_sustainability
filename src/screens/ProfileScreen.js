@@ -65,8 +65,8 @@ const handleSignOut = async () => {
 };
 
 export default function ProfileScreen() {
-  const navigation = useNavigation();
-  const { user } = useAuthentication();
+const navigation = useNavigation();
+const { user } = useAuthentication();
 
   const [partyVisible, setPartyVisible] = useState(false);
   const [partyMode, setPartyMode] = useState(false);
