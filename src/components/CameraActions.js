@@ -1,15 +1,17 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 export default function CameraActions({
   galleryMenu,
   checkGallery,
   takePhoto,
 }) {
+  const tabBarHeight = useBottomTabBarHeight();
+
   return (
-    <View style={styles.cameraActions}>
+    <View style={[styles.cameraActions, { bottom: 150 }]}>
       <View style={styles.cameraButtons}>
         <TouchableOpacity onPress={galleryMenu} style={styles.photosIcon}>
           <Ionicons name="copy-outline" size={25} color="white" />
@@ -28,7 +30,6 @@ export default function CameraActions({
 const styles = StyleSheet.create({
   cameraActions: {
     position: "absolute",
-    bottom: 16,
     paddingBottom: 32,
     width: "100%",
     alignItems: "center",

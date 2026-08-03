@@ -167,7 +167,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 40,
-    paddingBottom: 30,
+    // Clear the custom bottom navigation bar so the shutter remains tappable.
+    paddingBottom: 90,
   },
   bottomSpacer: { width: 44 },
   shutterOuter: {
