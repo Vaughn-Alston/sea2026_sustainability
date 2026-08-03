@@ -1,60 +1,138 @@
-# Snap Clone — Starter Project
+<a id="readme-top"></a>
 
-A minimal Snapchat-look-alike starter fullstack mobile dev.
-It ships with exactly two things working end-to-end:
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a href="https://github.com/github_username/repo_name">
+    <img src="https://github.com/Snap-Engineering-Academy-2026/Milestones/raw/main/SEA%20Logomark.png" alt="Logo" width="180" height="80">
+  </a>
 
-1. A Snapchat-styled **login/sign-up screen** (Supabase Auth, email + password)
-2. A **full-screen camera** that opens right after login (Expo Camera —
-   capture photo, flip camera, toggle flash, preview + retake)
+<h1 align="center">project_title</h1>
 
-Everything else — Stories, chat, friends, disappearing snaps, sending a
-snap to someone — is left as an exercise. There's a `TODO (students)` comment
-in `src/screens/CameraScreen.tsx` and `src/lib/supabase.ts` marking the two
-places you'll extend first.
+  <p align="center">
+    SHORT project_description (Ex. Todo App)
+    <br />
+    <a href="https://github.com/github_username/repo_name"><strong>Explore the Docs Link»</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/github_username/repo_name">View Demo Link</a>
+  </p>
+</div>
 
-## Tech stack
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#license">License</a></li>
+  </ol>
+</details>
 
-- Expo **SDK 54** (pinned — required for this to work in current Expo Go)
-- React Native 0.81 / React 19
-- Written in Javascript but is scaffolded to be refactor in TypeScript
-- Supabase (`@supabase/supabase-js`) for auth + database
-- `expo-camera` for the camera
-- `@react-navigation/native` + `native-stack` are pre-installed (not wired up
-  yet) — you'll want these once you add more screens (chat, stories, profile)
+<!-- ABOUT THE PROJECT -->
 
-## 1. Set up Supabase
+## About The Project
 
-1. Create a free project at https://supabase.com
-2. In your project, go to **Settings → API** and copy the **Project URL**
-   and the **anon/public key**
-3. Create an `.env.local` on the root. Paste in the following keys with YOUR values.
+Here's a blank template to get started. Tell me about the project and features it has.
 
-```js
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
-```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-4. In Supabase, go to **Authentication → Providers** and make sure
-   **Email** is `not` enabled. Under **Authentication →
-   Settings** you may want to turn **off** "Confirm email" so users can
-   sign up and log straight in without checking an inbox.
+### Built With
+- [![JavaScript][JavaScript.com]][JavaScript-url]
+- [![React Native][ReactNative]][ReactNative-url]
+- [![Expo][Expo.dev]][Expo-url]
+- [![Supabase][Supabase.com]][Supabase-url]
+- [![Git][Git.com]][Git-url]
+- [![GitHub][GitHub.com]][GitHub-url]
 
-## 2. Install & run
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-```bash
-npm install
-npx expo start
-```
+<!-- GETTING STARTED -->
 
-Scan the QR code with the **Expo Go** app (SDK 54 build) on your phone.
-Camera access requires a physical device or a simulator with camera
-support — it will not work in the web preview. Please allow Expo Go to access your camera
+## Getting Started
 
-## 3. Project structure
+This is an example of how you may give instructions on setting up your project locally.
+To get a local copy up and running, follow these simple example steps.
 
-```
-App.jsx                    -- auth listener: shows LoginScreen or CameraScreen
-src/lib/supabase.js         -- Supabase client (put your keys here)
-src/screens/LoginScreen.jsx  -- Snapchat-styled auth screen
-src/screens/CameraScreen.jsx -- full-screen camera + capture/preview
-```
+### Prerequisites
+
+This is an example of how to list things you need to use the software and how to install them.
+
+- npm
+  ```sh
+  npm install npm@latest -g
+  ```
+
+### Installation
+
+1. Get a free API Key at [https://example.com](https://example.com)
+2. Clone the repo
+   ```sh
+   git clone https://github.com/github_username/repo_name.git
+   ```
+3. Install NPM packages
+   ```sh
+   npm install
+   ```
+4. Enter your API in `config.js`
+   ```js
+   const API_KEY = "ENTER YOUR API";
+   ```
+5. Change git remote url to avoid accidental pushes to base project
+   ```sh
+   git remote set-url origin github_username/repo_name
+   git remote -v # confirm the changes
+   ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- USAGE EXAMPLES -->
+
+## Usage
+
+Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- LICENSE -->
+
+## License
+
+Distributed under the project_license. See `LICENSE.txt` for more information.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- MARKDOWN LINKS & IMAGES -->
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[license-url]: https://github.com/github_username/repo_name/blob/master/LICENSE.txt
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+[linkedin-url]: https://linkedin.com/in/linkedin_username
+[product-screenshot]: images/screenshot.png
+[ReactNative]: https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[ReactNative-url]: https://reactnative.dev/
+[Expo.dev]: https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white
+[Expo-url]: https://expo.dev/
+[Supabase.com]: https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white
+[Supabase-url]: https://supabase.com/
+[Git.com]: https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white
+[Git-url]: https://git-scm.com/
+[GitHub.com]: https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white
+[GitHub-url]: https://github.com/
+[JavaScript.com]: https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black
+[JavaScript-url]: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+
+## Let's talk resouces
+
+🌳 If you want to implement a table or bold text or even bullet point, use this [documentation](https://google.github.io/styleguide/docguide/style.html) to get the right syntax. Don't be afraid to look at other templates and pull the parts and types you like! Sharing is caring.
