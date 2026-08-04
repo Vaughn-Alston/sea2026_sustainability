@@ -76,6 +76,18 @@ export default function MapScreen({ navigation }) {
         <View style={[styles.bitmojiContainer, styles.shadow]}>
           <Pressable
             onPress={() => {
+              navigation.navigate("EventListScreen");
+            }}
+          >
+            <View style={styles.myBitmoji}>
+              <Ionicons name="list-outline" size={50} color="gray" />
+              <View style={styles.bitmojiTextContainer}>
+                <Text style={styles.bitmojiText}>Event List</Text>
+              </View>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => {
               navigation.navigate("Event");
             }}
           >
