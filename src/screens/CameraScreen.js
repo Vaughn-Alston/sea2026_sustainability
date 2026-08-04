@@ -1,251 +1,108 @@
+import React, { useEffect, useRef, useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  View,
   Image,
   SafeAreaView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  Modal,
-  Pressable,
+  View,
 } from "react-native";
-import { useEffect, useRef, useState } from "react";
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import * as MediaLibrary from "expo-media-library";
-import { shareAsync } from "expo-sharing";
-import * as ImagePicker from "expo-image-picker";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import CameraActions from "../components/CameraActions";
-import CameraOptions from "../components/CameraOptions";
-import PostcaptureOptions from "../components/PostcaptureActions";
-// Add supabase to store:
-import { supabase } from "../utils/hooks/supabase";
-import CameraGalleryMenu from "../components/CameraGalleryMenu";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
-export default function CameraScreen({ navigation, focused }) {
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const cameraRef = useRef(null);
-  const [facing, setFacing] = useState("back");
+export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] =
-    useState(null);
-  const [photo, setPhoto] = useState(null);
-  //const [image, setImage] = useState(null);
-  const [showGalleryMenu, setShowGalleryMenu] = useState(false);
+  const [facing, setFacing] = useState("back");
+  const [photoUri, setPhotoUri] = useState(null);
+  const cameraRef = useRef(null);
 
   useEffect(() => {
-    (async () => {
-      // Request media library permissions
-      const { status: mediaLibraryStatus } =
-        await MediaLibrary.requestPermissionsAsync();
-      setHasMediaLibraryPermission(mediaLibraryStatus === "granted");
-    })();
-  }, []);
+    navigation.setOptions({
+      tabBarStyle: photoUri ? { display: "none" } : undefined,
+    });
 
-  if (!permission) {
-    // Camera permissions are still loading.
-    return <View />;
-  }
+    return () => navigation.setOptions({ tabBarStyle: undefined });
+  }, [navigation, photoUri]);
+
+  const takePhoto = async () => {
+    if (!cameraRef.current) return;
+
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+    if (photo) setPhotoUri(photo.uri);
+  };
+
+  if (!permission) return <View style={styles.container} />;
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>
-          We need your permission to show the camera.
-        </Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.button}>
-          <Text style={styles.text}>Grant Permission</Text>
+      <View style={styles.permissionScreen}>
+        <Text style={styles.permissionText}>Snap needs camera access.</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+          <Text style={styles.permissionButtonText}>Enable Camera</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  function flipCamera() {
-    setFacing((current) => (current === "back" ? "front" : "back"));
-  }
-
-  function galleryMenu() {
-    // console.log("HELLO, is the gallery menu being shown?\n", !showGalleryMenu)
-    // return <CameraGalleryMenu />
-    setShowGalleryMenu(!showGalleryMenu);
-  }
-  async function checkGallery() {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      alert("Permission to access camera roll is required!");
-      return;
-    }
-    const pickerResult = await ImagePicker.launchImageLibraryAsync();
-    // console.log(pickerResult);
-    console.log(pickerResult);
-    setShowGalleryMenu(false); //By Ryan
-    console.log(pickerResult.assets[0].uri);
-    if (!pickerResult.canceled) {
-      //setImage(pickerResult.uri);
-      setPhoto(pickerResult.assets[0]); //By Ryan
-    }
-  }
-
-  async function takePhoto() {
-    if (cameraRef.current) {
-      const options = { quality: 1, base64: true, exif: false };
-      const newPhoto = await cameraRef.current.takePictureAsync(options);
-      setPhoto(newPhoto);
-      // This part is to insert URI to "gallery" table
-      console.log(" Before Insert to table!");
-      const { error } = await supabase
-        .from("gallery")
-        .insert({ photo: newPhoto.uri });
-      console.log("After Insert to table!");
-      if (error) {
-        console.error("Error inserting photo:", error.message);
-      }
-      // This part is to store images in a folder bucket named "pictureStorage"
-      //uploadImage(newPhoto.uri);
-    }
-  }
-
-  // async function uploadImage (photoUri) {
-  //   // console.log("1")
-  //   const response = await fetch(photoUri);
-
-  //   const blob = await response.blob();
-
-  //   const arrayBuffer = await new Response(blob).arrayBuffer();
-  //   // console.log("2")
-  //   const fileName = `public/${Date.now()}.jpg`;
-  //   const { error1} = await supabase
-  //     .storage
-  //     .from('pictureStorage')
-  //     .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: false });
-  //   // console.log("3")
-  //   if (error1) {
-  //     console.error('Error uploading image:', error1.message);
-  //   } else {
-  //     console.log('Image successfully uploaded:', data);
-  //   }
-
-  // }
-
-  function savePhoto() {
-    MediaLibrary.saveToLibraryAsync(photo.uri).then(() => {
-      setPhoto(null);
-    });
-  }
-
-  if (photo) {
-    const sharePic = () => {
-      shareAsync(photo.uri).then(() => {
-        setPhoto(null);
-      });
-    };
-
+  if (photoUri) {
     return (
-      <View
-        style={[
-          styles.container,
-          {
-            marginBottom: tabBarHeight,
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
-          },
-        ]}
-      >
-        <Image
-          style={facing === "front" ? styles.frontPreview : styles.preview}
-          //source={{ uri: "data:image/jpg;base64," + photo.base64 }}
-          // We don't need that base64 thing, just uri is good
-          source={{ uri: photo.uri }}
-        />
-        {hasMediaLibraryPermission && (
-          <PostcaptureOptions
-            deletePhoto={() => setPhoto(null)}
-            savePhoto={savePhoto}
-          />
-        )}
-      </View>
-    );
-  }
+      <View style={styles.container}>
+        <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} />
+        <SafeAreaView style={styles.overlay}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setPhotoUri(null)}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
 
-  if (showGalleryMenu) {
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            marginBottom: tabBarHeight,
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
-          },
-        ]}
-      >
-        <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
-        <CameraOptions flipCamera={flipCamera} />
-        <CameraActions
-          galleryMenu={galleryMenu}
-          checkGallery={checkGallery}
-          takePhoto={takePhoto}
-        />
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showGalleryMenu}
-          onRequestClose={() => {
-            Alert.alert("Modal has been closed.");
-            setModalVisible(!modalVisible);
-          }}
-        >
-          <View style={styles.centeredView}>
-            <View style={styles.modalView}>
-              <Pressable
-                onPress={checkGallery}
-                style={({ pressed }) => [
-                  { backgroundColor: pressed ? "blue" : "transparent" },
-                  styles.buttonStyle,
-                ]}
-                // style={styles.buttonStyle}
-              >
-                <Text style={styles.buttonText}>Phone Gallery</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  navigation.navigate("MemoryScreen");
-                }}
-                style={styles.buttonStyle}
-              >
-                <Text style={styles.buttonText}>ChatSnap Memories</Text>
-              </Pressable>
-              <Pressable onPress={galleryMenu} style={styles.closeButtonStyle}>
-                <Text style={styles.buttonText}>Close</Text>
-              </Pressable>
-            </View>
+          <View style={styles.previewActions}>
+            <TouchableOpacity
+              style={styles.darkActionButton}
+              onPress={() => {}}
+            >
+              <View style={styles.saveSymbol}>
+                <Ionicons name="arrow-down" size={27} color="#fff" />
+                <View style={styles.saveLine} />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.storiesButton}
+              onPress={() => {}}
+            >
+              <Text style={styles.darkActionText}>Stories</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={() => {}}
+            >
+              <Text style={styles.sendButtonText}>Send To</Text>
+              <Ionicons name="send" size={24} color="#111" />
+            </TouchableOpacity>
           </View>
-        </Modal>
+        </SafeAreaView>
       </View>
     );
   }
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          marginBottom: tabBarHeight,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-        },
-      ]}
-    >
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef} />
-      <CameraOptions flipCamera={flipCamera} />
-      <CameraActions
-        galleryMenu={galleryMenu}
-        checkGallery={checkGallery}
-        takePhoto={takePhoto}
-      />
+    <View style={styles.container}>
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
+      <SafeAreaView style={styles.overlay}>
+        <TouchableOpacity
+          style={styles.flipButton}
+          onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
+        >
+          <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={styles.captureArea}>
+          <TouchableOpacity
+            accessibilityLabel="Take photo"
+            style={styles.shutterOuter}
+            onPress={takePhoto}
+          >
+            <View style={styles.shutterInner} />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
@@ -253,64 +110,133 @@ export default function CameraScreen({ navigation, focused }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#000",
   },
-  camera: {
-    overflow: "hidden",
+  permissionScreen: {
     flex: 1,
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
-  },
-  preview: {
-    flex: 1,
-    borderRadius: 16,
-  },
-  frontPreview: {
-    flex: 1,
-    borderRadius: 16,
-    transform: [{ scaleX: -1 }],
-  },
-  modalView: {
-    margin: 20,
-    marginTop: 400,
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 15,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  buttonStyle: {
-    alignItems: "center",
-    justifyContent: "center",
-    margin: 5,
-    paddingVertical: 20,
     paddingHorizontal: 32,
-    borderRadius: 20,
-    elevation: 3,
-    backgroundColor: "#2196F3",
   },
-  closeButtonStyle: {
+  permissionText: {
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  permissionButton: {
+    backgroundColor: "#FFFC00",
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  permissionButtonText: {
+    color: "#111",
+    fontWeight: "800",
+  },
+  overlay: {
+    flex: 1,
+  },
+  flipButton: {
+    alignSelf: "flex-end",
+    marginTop: 12,
+    marginRight: 18,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  captureArea: {
+    position: "absolute",
+    bottom: 112,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  shutterOuter: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    borderWidth: 4,
+    borderColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    margin: 5,
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    borderRadius: 20,
-    elevation: 3,
-    backgroundColor: "red",
   },
-  buttonText: {
-    fontSize: 20,
-    lineHeight: 21,
-    letterSpacing: 0.5,
-    color: "white",
+  shutterInner: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: "#fff",
+  },
+  closeButton: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    marginLeft: 18,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  previewActions: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#000",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 42,
+  },
+  darkActionButton: {
+    width: 70,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#313131",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveSymbol: {
+    alignItems: "center",
+  },
+  saveLine: {
+    width: 22,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#fff",
+    marginTop: -3,
+  },
+  storiesButton: {
+    flex: 1,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#313131",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  darkActionText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  sendButton: {
+    flex: 1.1,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FFFC00",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  sendButtonText: {
+    color: "#111",
+    fontSize: 17,
+    fontWeight: "800",
   },
 });
