@@ -1,15 +1,29 @@
-import React, { useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  Modal,
   View,
   Text,
   Pressable,
   StyleSheet,
-  Image,
-  ScrollView,
 } from "react-native";
+import BottomSheet, {
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 
+const HANDLE_HEIGHT = 24;
 
+function SheetHandle() {
+  return (
+    <View style={styles.handleContainer}>
+      <View style={styles.handleIndicator} />
+    </View>
+  );
+}
 
 export default function PartyDrawer({
   visible,
@@ -21,11 +35,16 @@ export default function PartyDrawer({
   const [selectedCoPilot, setSelectedCoPilot] = useState(null);
   const [page, setPage] = useState("planner");
 
-  //State variable to control the visibility of the party drawer modal
+  // Keeping your existing state variable
   const [openModal, setOpenModal] = useState(null);
 
+  const sheetRef = useRef(null);
 
-
+  // Collapsed, halfway, and almost full-screen
+  const snapPoints = useMemo(
+    () => [100 + HANDLE_HEIGHT, "50%", "90%"],
+    [],
+  );
 
   const handleSelectHours = (hours) => {
     setSelectedHours(hours);
@@ -38,7 +57,7 @@ export default function PartyDrawer({
   };
 
   const handleStartParty = () => {
-    onStartParty({
+    onStartParty?.({
       hours: selectedHours,
       coPilot: selectedCoPilot,
     });
@@ -48,67 +67,96 @@ export default function PartyDrawer({
     setSelectedCoPilot(null);
   };
 
-  const handleClose = () => {
+  // The X closes the physical bottom sheet
+  const handleClosePress = useCallback(() => {
+    sheetRef.current?.close();
+  }, []);
+
+  // Runs after the bottom sheet finishes closing
+  const handleSheetClose = useCallback(() => {
     setPage("MapScreen");
-    onClose();
-   
-  };
+    setOpenModal(false);
+    onClose?.();
+  }, [onClose]);
 
- return (
-  <>
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
+  // Open or close based on the parent's visible prop
+  useEffect(() => {
+    if (visible) {
+      // Open at the halfway snap point
+      sheetRef.current?.snapToIndex(1);
+    } else {
+      sheetRef.current?.close();
+    }
+  }, [visible]);
+
+  return (
+    <BottomSheet
+      ref={sheetRef}
+      index={-1}
+      snapPoints={snapPoints}
+      enableDynamicSizing={false}
+      enableHandlePanningGesture
+      enableContentPanningGesture
+      enablePanDownToClose={false}
+      handleComponent={SheetHandle}
+      backgroundStyle={styles.sheetBackground}
+      style={styles.sheetShadow}
+      onClose={handleSheetClose}
     >
-
-    {/* This will be the area behind the party drawer when clicked it will close the modal */}
-      <View style={styles.modalContainer}>
+      <BottomSheetView style={styles.drawer}>
         <Pressable
-          style={styles.backdrop}
-          onPress={handleClose}
-        />
+          style={styles.closeButton}
+          onPress={handleClosePress}
+          hitSlop={10}
+        >
+          <Text style={styles.closeButtonText}>✕</Text>
+        </Pressable>
 
-
-        <View style={styles.drawer}>
-          <Pressable
-            style={styles.closeButton}
-            onPress={handleClose}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
-          </Pressable>
-
-          {/* Empty modal */}
-        </View>
-      </View>
-    </Modal>
-  </>
-);
+        {/* Empty bottom-sheet content */}
+      </BottomSheetView>
+    </BottomSheet>
+  );
 }
 
 const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-
-  drawer: {
-    width: "100%",
-    height: "90%",
+  sheetBackground: {
     backgroundColor: "#F7F7F9",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
 
+  sheetShadow: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    elevation: 12,
+  },
+
+  drawer: {
+    flex: 1,
+    backgroundColor: "#F7F7F9",
+  },
+
+  handleContainer: {
+    height: HANDLE_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  handleIndicator: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#D9D9D9",
+  },
+
   closeButton: {
     position: "absolute",
-    top: 20,
+    top: 12,
     right: 20,
     zIndex: 10,
     padding: 8,

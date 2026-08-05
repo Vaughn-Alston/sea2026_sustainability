@@ -41,13 +41,9 @@ export default function MapScreen({ navigation }) {
   const insets = useSafeAreaInsets();
 
 
-  
-
-
 
  //Here will be the state variables for the drawer 
 const [partyVisible, setPartyVisible] = useState(false);
-
 
 
 
@@ -61,7 +57,6 @@ const handleClose = () => {
 
 
 
-
 //This will open my party drawer modal
   const handleOpen = () => {
     setPartyVisible(true);
@@ -69,7 +64,6 @@ const handleClose = () => {
 
   //Now I need to find the button that opens the page if the Event list button is clicked
   //So I can opent the party drawer modal from the event list page
-
 
 
 
@@ -111,12 +105,6 @@ const handleClose = () => {
     setSelectedEvent(event);
     eventTabRef.current?.open();
   };
-
-
-
-
-
-
 
 
   // Everything below here will render the functions go above
@@ -191,27 +179,31 @@ const handleClose = () => {
               <Text style={styles.bitmojiText}>Friends</Text>
             </View>
           </View>
-        </View>
+       </View>
+            
+       </View>
 
 
-
-              {/* Here on line 143 This function will open my modal */}
+       {/* Here on line 143 This function will open my modal */}
               <PartyDrawer
               // Here I will pass the state variable to the PartyDrawer component
                   visible={partyVisible}
                   //Here I am using the default function onClose() to pass false towards the component
                   //This will give onClose() the ability to close the modal when called
                   onClose={() => setPartyVisible(false)}
-              />
+         />
 
 
-      </View>
+
+
+
 
       <EventPageTab
         ref={eventTabRef}
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
       />
+
     </View>
   );
 }

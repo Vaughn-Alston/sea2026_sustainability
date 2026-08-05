@@ -14,7 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../../utils/hooks/supabase";
 import { useAuthentication } from "../../utils/hooks/useAuthentication";
 
-import PartyDrawer from "../components/PartyDrawer";
+import PartyDrawer from "../components/EventList";
 
 const storyItems = [
   {
