@@ -35,7 +35,6 @@ export default function EventList({
   events = [],
   onClose,
   onSelectEvent,
-  onIndexChange,
 }) {
   const [page, setPage] = useState("planner");
 
@@ -87,7 +86,6 @@ export default function EventList({
     backgroundStyle={styles.sheetBackground}
     style={styles.sheetShadow}
     onClose={handleSheetClose}
-    onChange={onIndexChange}
   >
     <BottomSheetScrollView
       style={styles.drawer}

@@ -90,9 +90,6 @@ export default function MapScreen({ navigation }) {
   // Only send the list back up if that's where the event came from
   const [returnToList, setReturnToList] = useState(false);
 
-  // -1 closed, 0 collapsed, 1 half, 2 full
-  const [listIndex, setListIndex] = useState(-1);
-
   const [currentRegion, setCurrentRegion] = useState({
     latitude: 34.0211573,
     longitude: -118.4503864,
@@ -122,7 +119,6 @@ export default function MapScreen({ navigation }) {
   const openEvent = (event, { fromList = false } = {}) => {
     setReturnToList(fromList);
     setSelectedEvent(event);
-    eventTabRef.current?.open();
   };
 
   const handleSelectEvent = (event) => {
@@ -162,9 +158,9 @@ export default function MapScreen({ navigation }) {
         showsMyLocationButton={true}
       />
 
-      {/* pills hide while off the map, if event sheet is up, or if list is full height */}
+      {/* pills hide while off the map, or while either modal is open */}
       <MapPillBar
-        visible={isFocused && !selectedEvent && listIndex < 2}
+        visible={isFocused && !selectedEvent && !listVisible}
         onSelect={handlePillSelect}
       />
 
@@ -191,8 +187,6 @@ export default function MapScreen({ navigation }) {
         events={SAMPLE_EVENTS}
         // Tapping a card sends the whole event row back up here
         onSelectEvent={handleSelectEvent}
-        // Lets pills know when list coverthem
-        onIndexChange={setListIndex}
         //Here I am using the default function onClose() to pass false towards the component
         //This will give onClose() the ability to close the modal when called
         onClose={handleListClosed}

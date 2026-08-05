@@ -22,7 +22,7 @@ import FootstepsIcon from "../../assets/pill-icons/footsteps.svg";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // How long the row takes to fade in or out
-const FADE_DURATION = 180;
+const FADE_DURATION = 150;
 
 // How far pill shrinks while held down
 const PRESS_SCALE = 0.85;
@@ -34,7 +34,7 @@ const PILLS = [
   { id: "memories", label: "Memories", Icon: MemoriesIcon },
   { id: "trending", label: "Trending", Icon: TrendingIcon },
   { id: "impacts", label: "Impacts", Icon: ImpactIcon },
-  { id: "footsteps", label: "Footsteps", Icon: FootstepsIcon },
+   { id: "footsteps", label: "Footsteps", Icon: FootstepsIcon },
   { id: "visited", label: "Visited", Icon: ClockIcon },
   { id: "popular", label: "Popular", Icon: PopularIcon },
   { id: "favorites", label: "Favorites", Icon: HeartIcon },
@@ -70,7 +70,11 @@ function Pill({ label, Icon, onPress }) {
   );
 }
 
-export default function MapPillBar({ visible = true, onSelect }) {
+export default function MapPillBar({
+  visible = true,
+  topOffset = 8,
+  onSelect,
+}) {
   const insets = useSafeAreaInsets();
   const opacity = useSharedValue(visible ? 1 : 0);
 
@@ -82,7 +86,7 @@ export default function MapPillBar({ visible = true, onSelect }) {
 
   return (
     <Animated.View
-      style={[styles.wrapper, { top: insets.top + 8 }, fadeStyle]}
+      style={[styles.wrapper, { top: insets.top + topOffset }, fadeStyle]}
       // Flips right away rather than after the fade, so a hidden row never swallows a tap meant for the map underneath
       pointerEvents={visible ? "auto" : "none"}
     >
@@ -120,7 +124,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     flexDirection: "row",
-    paddingVertical: 6.5,
+    paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 100,
     backgroundColor: "#FFFFFF",

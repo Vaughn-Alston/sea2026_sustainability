@@ -1,10 +1,10 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { StyleSheet, View, Text, Image, Pressable } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { formatEventWhen } from "../../utils/datetimeUtil";
 
 const HANDLE_HEIGHT = 24;
-const FALLBACK_HEADER_HEIGHT = 220;
+const HEADER_HEIGHT = 170;
 
 function SheetHandle() {
   return (
@@ -31,12 +31,11 @@ function SheetHandle() {
  */
 const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
   const sheetRef = useRef(null);
-  const [headerHeight, setHeaderHeight] = useState(null);
 
-  const snapPoints = useMemo(() => {
-    const collapsed = (headerHeight ?? FALLBACK_HEADER_HEIGHT) + HANDLE_HEIGHT;
-    return [collapsed, "50%", "90%"];
-  }, [headerHeight]);
+  const snapPoints = useMemo(
+    () => [HEADER_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
+    [],
+  );
 
   useImperativeHandle(
     ref,
@@ -49,15 +48,18 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
     [],
   );
 
-  const handleHeaderLayout = useCallback((e) => {
-    const next = Math.round(e.nativeEvent.layout.height);
-    setHeaderHeight((prev) => (prev === next ? prev : next));
-  }, []);
-
   const handleClose = useCallback(() => {
     sheetRef.current?.close();
     onClose?.();
   }, [onClose]);
+
+  useEffect(() => {
+    if (event) {
+      sheetRef.current?.snapToIndex(1);
+    } else {
+      sheetRef.current?.close();
+    }
+  }, [event]);
 
   const when = formatEventWhen(event?.start_datetime, event?.end_datetime);
 
@@ -66,15 +68,17 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
       ref={sheetRef}
       index={-1}
       snapPoints={snapPoints}
+      enableDynamicSizing={false}
       enablePanDownToClose={false}
       handleComponent={SheetHandle}
       backgroundStyle={styles.sheetBackground}
       style={styles.sheetShadow}
     >
+      {/* show nothing until caller sets event */}
       {event ? (
         <View style={styles.sheetBody}>
-          {/* pinned header - stays visible at every snapping position */}
-          <View style={styles.header} onLayout={handleHeaderLayout}>
+          {/* pinned header - stays visible at every snap point */}
+          <View style={styles.header}>
             <View style={styles.titleRow}>
               <Pressable
                 style={[
@@ -140,7 +144,7 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
             </View>
           </View>
 
-          {/* scrollable - only once expanded */}
+          {/* scrollable detail - only reachable once expanded */}
           <BottomSheetScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -166,7 +170,7 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
               </View>
             )}
 
-            {/* placeholder until organizations are joined in on the query form events list */}
+            {/* Placeholder until organizations are joined in on the query. */}
             {event.organization != null && (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Hosted by</Text>
@@ -242,6 +246,8 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   avatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#F0F0F0",
   },
   titleTextBlock: {
@@ -321,9 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     color: "#2A2A2A",
-  },
-  avatarFallback: {
-    backgroundColor: "#F0F0F0",
   },
 });
 
