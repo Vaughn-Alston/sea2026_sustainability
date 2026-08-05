@@ -76,11 +76,27 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
           {/* pinned header - stays visible at every snapping position */}
           <View style={styles.header} onLayout={handleHeaderLayout}>
             <View style={styles.titleRow}>
-              {event.image ? (
-                <Image source={{ uri: event.image }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]} />
-              )}
+              <Pressable
+                style={[
+                  styles.avatarRing,
+                  event.hasStory && styles.avatarRingActive,
+                ]}
+                onPress={() =>
+                  console.log(
+                    "Open story",
+                    event.id,
+                    "hasStory:",
+                    !!event.hasStory,
+                  )
+                }
+                hitSlop={6}
+              >
+                {event.image ? (
+                  <Image source={{ uri: event.image }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]} />
+                )}
+              </Pressable>
 
               <View style={styles.titleTextBlock}>
                 <Text style={styles.title} numberOfLines={2}>
@@ -207,16 +223,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  avatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+  avatarRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 3,
-    borderColor: "#3DA9FC",
-  },
-  avatarFallback: {
+    borderColor: "transparent",
+    padding: 3,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarRingActive: {
+    borderColor: "#3DA9FC",
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarFallback: {
     backgroundColor: "#F0F0F0",
   },
   titleTextBlock: {
@@ -298,8 +323,8 @@ const styles = StyleSheet.create({
     color: "#2A2A2A",
   },
   avatarFallback: {
-  backgroundColor: "#F0F0F0",
-},
+    backgroundColor: "#F0F0F0",
+  },
 });
 
 export default EventPageTab;

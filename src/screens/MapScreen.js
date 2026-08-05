@@ -16,10 +16,8 @@ import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
 
-/**
- * Temporary stand-in shaped exactly like a row from `public.events`.
- * Delete this once the events list passes a real row down as a prop.
- */
+
+// Temp event for testing
 const SAMPLE_EVENT = {
   id: 1,
   name: "Beach Cleanup & Coastal Care Day",
@@ -29,7 +27,7 @@ const SAMPLE_EVENT = {
   start_datetime: "2026-09-12T16:00:00+00:00",
   end_datetime: "2026-09-12T19:00:00+00:00",
   organization: 1,
-  image: null, // no image column on `events` yet — falls back to an icon
+  image: null,
 };
 
 export default function MapScreen({ navigation }) {
@@ -38,7 +36,7 @@ export default function MapScreen({ navigation }) {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Parent owns *which* event is showing; the sheet owns its own position.
+  // Parent owns which event is showing; the sheet owns its own position
   const eventTabRef = useRef(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -68,7 +66,7 @@ export default function MapScreen({ navigation }) {
     })();
   }, []);
 
-  // This is the only thing the events list will need to call later, too.
+  // This is the only thing the events list will need to call later
   const openEvent = (event) => {
     setSelectedEvent(event);
     eventTabRef.current?.open();
