@@ -21,25 +21,49 @@ import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
 import MapPillBar from "../components/MapPillBar";
 
-// Temp event for testing
-const SAMPLE_EVENT = {
-  id: 1,
-  name: "Beach Cleanup & Coastal Care Day",
-  description:
-    "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
-  location: "Santa Monica Beach, Santa Monica, CA",
-  start_datetime: "2026-09-12T16:00:00+00:00",
-  end_datetime: "2026-09-12T19:00:00+00:00",
-  organization: 1,
-  image: null,
-};
+// Stands in for the events query until the list pulls from supabase
+const SAMPLE_EVENTS = [
+  {
+    id: 1,
+    name: "Beach Cleanup & Coastal Care Day",
+    description:
+      "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
+    location: "Santa Monica Beach, Santa Monica, CA",
+    start_datetime: "2026-09-12T16:00:00+00:00",
+    end_datetime: "2026-09-12T19:00:00+00:00",
+    organization: 1,
+    image: null,
+  },
+  {
+    id: 2,
+    name: "Urban Garden & Composting Workshop",
+    description:
+      "Hands-on session covering composting basics, soil health, and what to do with kitchen scraps in a small apartment.",
+    location: "Griffith Park Community Garden, Los Angeles, CA",
+    start_datetime: "2026-09-19T17:00:00+00:00",
+    end_datetime: "2026-09-19T19:00:00+00:00",
+    organization: 1,
+    image: null,
+  },
+  {
+    id: 3,
+    name: "Zero Waste Swap Meet",
+    description:
+      "A community clothing and household goods swap. Bring what you no longer use, take home something someone else loved.",
+    location: "Echo Park, Los Angeles, CA",
+    start_datetime: "2026-09-26T18:00:00+00:00",
+    end_datetime: "2026-09-26T21:00:00+00:00",
+    organization: 2,
+    image: null,
+  },
+];
 
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
 
-  //Here will be the state variables for the drawer
+  //Here will be the state variables for the list
   const [listVisible, setListVisible] = useState(false);
 
   //This will handle the closing of the Modal
@@ -48,7 +72,7 @@ export default function MapScreen({ navigation }) {
     setListVisible(false);
   };
 
-  //This will open my party drawer modal
+  //This will open event list modal
   const handleOpen = () => {
     setListVisible(true);
   };
@@ -62,6 +86,12 @@ export default function MapScreen({ navigation }) {
   // Parent owns which event is showing; the sheet owns its own position
   const eventTabRef = useRef(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // Only send the list back up if that's where the event came from
+  const [returnToList, setReturnToList] = useState(false);
+
+  // -1 closed, 0 collapsed, 1 half, 2 full
+  const [listIndex, setListIndex] = useState(-1);
 
   const [currentRegion, setCurrentRegion] = useState({
     latitude: 34.0211573,
@@ -89,10 +119,29 @@ export default function MapScreen({ navigation }) {
     })();
   }, []);
 
-  // This is the only thing the events list will need to call later
-  const openEvent = (event) => {
+  const openEvent = (event, { fromList = false } = {}) => {
+    setReturnToList(fromList);
     setSelectedEvent(event);
     eventTabRef.current?.open();
+  };
+
+  const handleSelectEvent = (event) => {
+    setListVisible(false);
+    openEvent(event, { fromList: true });
+  };
+
+  const handleListClosed = () => {
+    setListVisible(false);
+  };
+
+  // Closing the event page brings back event list
+  const handleEventClosed = () => {
+    setSelectedEvent(null);
+
+    if (returnToList) {
+      setReturnToList(false);
+      setListVisible(true);
+    }
   };
 
   const handlePillSelect = (id) => {
@@ -113,9 +162,9 @@ export default function MapScreen({ navigation }) {
         showsMyLocationButton={true}
       />
 
-      {/* pills hide while off the map or if event sheet is up */}
+      {/* pills hide while off the map, if event sheet is up, or if list is full height */}
       <MapPillBar
-        visible={isFocused && !selectedEvent}
+        visible={isFocused && !selectedEvent && listIndex < 2}
         onSelect={handlePillSelect}
       />
 
@@ -139,9 +188,6 @@ export default function MapScreen({ navigation }) {
               setListVisible(true); //This line will open the party drawer modal when the button is pressed
 
               console.log("Event List button pressed");
-
-              //This line will take you to a new screen called EventListScreen when the button is pressed
-              // navigation.navigate("EventListScreen");
             }}
           >
             <View style={styles.myBitmoji}>
@@ -152,7 +198,8 @@ export default function MapScreen({ navigation }) {
             </View>
           </Pressable>
 
-          <Pressable onPress={() => openEvent(SAMPLE_EVENT)}>
+          {/* Takes one event, not the whole list */}
+          <Pressable onPress={() => openEvent(SAMPLE_EVENTS[0])}>
             <View style={styles.myBitmoji}>
               <Ionicons name="calendar-outline" size={50} color="gray" />
               <View style={styles.bitmojiTextContainer}>
@@ -186,15 +233,21 @@ export default function MapScreen({ navigation }) {
       <EventList
         // Here I will pass the state variable to the PartyDrawer component
         visible={listVisible}
+        // renders list - comes from supabase later
+        events={SAMPLE_EVENTS}
+        // Tapping a card sends the whole event row back up here
+        onSelectEvent={handleSelectEvent}
+        // Lets pills know when list coverthem
+        onIndexChange={setListIndex}
         //Here I am using the default function onClose() to pass false towards the component
         //This will give onClose() the ability to close the modal when called
-        onClose={() => setListVisible(false)}
+        onClose={handleListClosed}
       />
 
       <EventPageTab
         ref={eventTabRef}
         event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
+        onClose={handleEventClosed}
       />
     </View>
   );
