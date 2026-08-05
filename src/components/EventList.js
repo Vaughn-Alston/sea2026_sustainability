@@ -28,14 +28,11 @@ function SheetHandle() {
   );
 }
 
-export default function PartyDrawer({
+
+export default function EventList({
   visible,
   onClose,
-  onStartParty,
 }) {
-  const [timerModalVisible, setTimerModalVisible] = useState(false);
-  const [selectedHours, setSelectedHours] = useState(null);
-  const [selectedCoPilot, setSelectedCoPilot] = useState(null);
   const [page, setPage] = useState("planner");
 
   // Keeping your existing state variable
@@ -127,7 +124,7 @@ export default function PartyDrawer({
 
 
 
-          Hello
+        
 
       </View>
     </BottomSheetView>
