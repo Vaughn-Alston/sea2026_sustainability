@@ -11,6 +11,9 @@ import {
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+//Here Im importing the event drawer modal
+import PartyDrawer from "../components/EventList";
+
 import * as Location from "expo-location";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -33,8 +36,37 @@ const SAMPLE_EVENT = {
 };
 
 export default function MapScreen({ navigation }) {
+
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+
+
+
+ //Here will be the state variables for the drawer 
+const [partyVisible, setPartyVisible] = useState(false);
+
+
+
+//This will handle the closing of the Modal
+const handleClose = () => {
+    //Set the screen back to the map screen
+    setPage("MapScreen"); 
+    //close the party modal
+    setPartyVisible(false);
+};
+
+
+
+//This will open my party drawer modal
+  const handleOpen = () => {
+    setPartyVisible(true);
+  };
+
+  //Now I need to find the button that opens the page if the Event list button is clicked
+  //So I can opent the party drawer modal from the event list page
+
+
+
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -74,6 +106,8 @@ export default function MapScreen({ navigation }) {
     eventTabRef.current?.open();
   };
 
+
+  // Everything below here will render the functions go above
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
@@ -100,7 +134,14 @@ export default function MapScreen({ navigation }) {
         <View style={[styles.bitmojiContainer, styles.shadow]}>
           <Pressable
             onPress={() => {
-              navigation.navigate("EventListScreen");
+
+            setPartyVisible(true); //This line will open the party drawer modal when the button is pressed
+
+            console.log("Event List button pressed");
+
+
+              //This line will take you to a new screen called EventListScreen when the button is pressed
+              // navigation.navigate("EventListScreen");
             }}
           >
             <View style={styles.myBitmoji}>
@@ -138,14 +179,31 @@ export default function MapScreen({ navigation }) {
               <Text style={styles.bitmojiText}>Friends</Text>
             </View>
           </View>
-        </View>
-      </View>
+       </View>
+            
+       </View>
+
+
+       {/* Here on line 143 This function will open my modal */}
+              <PartyDrawer
+              // Here I will pass the state variable to the PartyDrawer component
+                  visible={partyVisible}
+                  //Here I am using the default function onClose() to pass false towards the component
+                  //This will give onClose() the ability to close the modal when called
+                  onClose={() => setPartyVisible(false)}
+         />
+
+
+
+
+
 
       <EventPageTab
         ref={eventTabRef}
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
       />
+
     </View>
   );
 }
