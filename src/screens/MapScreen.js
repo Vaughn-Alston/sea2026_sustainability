@@ -10,11 +10,13 @@ import {
 } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 
 import * as Location from "expo-location";
 
 import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
+import MapPillBar from "../components/MapPillBar";
 
 
 // Temp event for testing
@@ -33,6 +35,7 @@ const SAMPLE_EVENT = {
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -72,6 +75,15 @@ export default function MapScreen({ navigation }) {
     eventTabRef.current?.open();
   };
 
+  const handlePillSelect = (id) => {
+    if (id !== "impacts") {
+      console.log("Pill pressed:", id);
+      return;
+    }
+
+    navigation.navigate("EventListScreen");
+  };
+
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
@@ -79,6 +91,12 @@ export default function MapScreen({ navigation }) {
         region={currentRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
+      />
+
+      {/* pills hide while off the map or if event sheet is up */}
+      <MapPillBar
+        visible={isFocused && !selectedEvent}
+        onSelect={handlePillSelect}
       />
 
       <View style={[styles.mapFooter]}>
