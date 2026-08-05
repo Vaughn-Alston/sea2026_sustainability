@@ -70,14 +70,6 @@ export default function App() {
           component={EventScreen}
           options={{ headerShown: true }}
         />
-        <Stack.Screen
-          name="EventListScreen"
-          component={EventListScreen}
-          options={{
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
       </Stack.Navigator>
     </NavigationContainer>
   );
