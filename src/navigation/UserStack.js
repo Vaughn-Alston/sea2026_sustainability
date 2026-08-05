@@ -13,6 +13,7 @@ import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
 import EventListScreen from "../screens/EventListScreen";
 import EventPageScreen from "../screens/EventPageScreen";
+import ImpactScreen from "../screens/ImpactScreen";
 
 const Stack = createStackNavigator();
 
@@ -78,6 +79,11 @@ export default function App() {
             presentation: "modal",
             headerShown: false,
           }}
+        />
+        <Stack.Screen
+          name="Impact"
+          component={ImpactScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>
