@@ -12,12 +12,14 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 
+//Here Im importing the event drawer modal
+import EventList from "../components/EventList";
+
 import * as Location from "expo-location";
 
 import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
 import MapPillBar from "../components/MapPillBar";
-
 
 // Temp event for testing
 const SAMPLE_EVENT = {
@@ -36,6 +38,24 @@ export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+
+  //Here will be the state variables for the drawer
+  const [listVisible, setListVisible] = useState(false);
+
+  //This will handle the closing of the Modal
+  const handleClose = () => {
+    //close the party modal
+    setListVisible(false);
+  };
+
+  //This will open my party drawer modal
+  const handleOpen = () => {
+    setListVisible(true);
+  };
+
+  //Now I need to find the button that opens the page if the Event list button is clicked
+  //So I can opent the party drawer modal from the event list page
+
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -81,7 +101,7 @@ export default function MapScreen({ navigation }) {
       return;
     }
 
-    navigation.navigate("EventListScreen");
+    setListVisible(true);
   };
 
   return (
@@ -116,7 +136,12 @@ export default function MapScreen({ navigation }) {
         <View style={[styles.bitmojiContainer, styles.shadow]}>
           <Pressable
             onPress={() => {
-              navigation.navigate("EventListScreen");
+              setListVisible(true); //This line will open the party drawer modal when the button is pressed
+
+              console.log("Event List button pressed");
+
+              //This line will take you to a new screen called EventListScreen when the button is pressed
+              // navigation.navigate("EventListScreen");
             }}
           >
             <View style={styles.myBitmoji}>
@@ -156,6 +181,15 @@ export default function MapScreen({ navigation }) {
           </View>
         </View>
       </View>
+
+      {/* Here on line 143 This function will open my modal */}
+      <EventList
+        // Here I will pass the state variable to the PartyDrawer component
+        visible={listVisible}
+        //Here I am using the default function onClose() to pass false towards the component
+        //This will give onClose() the ability to close the modal when called
+        onClose={() => setListVisible(false)}
+      />
 
       <EventPageTab
         ref={eventTabRef}
