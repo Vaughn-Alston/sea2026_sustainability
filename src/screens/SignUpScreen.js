@@ -54,21 +54,15 @@ export default function SignupScreen({ navigation }) {
           setAlreadyInUseMessage("");
         }
       } else {
-        // console.log("User signed up:", data);
-        // Navigate to a different screen or handle successful signup
-
         console.log("User signed up:", JSON.stringify(data, null, 4));
 
         try {
           console.log("Now updating profile with birthday");
-          const updates = {
-            id: data.user.id,
-            username: data.user.email,
-            birthday: birthday,
-            updated_at: new Date(),
-          };
 
-          const { error } = await supabase.from("profiles").upsert(updates);
+          const { error } = await supabase
+            .from("users")
+            .update({ birthday, updated_at: new Date() })
+            .eq("id", data.user.id);
 
           if (error) {
             console.log("Error caught");

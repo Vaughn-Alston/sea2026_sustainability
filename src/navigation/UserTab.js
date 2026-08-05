@@ -110,6 +110,11 @@ const CustomTabBar = (props) => {
   const { state, descriptors, navigation } = props;
   const insets = useSafeAreaInsets();
   const isCameraActive = state.routes[state.index]?.name === "Camera";
+  const activeOptions = descriptors[state.routes[state.index]?.key]?.options;
+
+  if (activeOptions?.tabBarStyle?.display === "none") {
+    return null;
+  }
 
   return (
     <View

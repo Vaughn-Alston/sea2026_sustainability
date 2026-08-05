@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
-import MapView, { Marker } from "react-native-maps";
+import React, { useState, useEffect, useRef } from "react";
+import MapView from "react-native-maps";
 import {
   StyleSheet,
   View,
-  Dimensions,
   Image,
   Text,
   TouchableOpacity,
@@ -17,7 +16,24 @@ import PartyDrawer from "../components/EventList";
 
 import * as Location from "expo-location";
 
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
+import EventPageTab from "../components/EventPageTab";
+
+/**
+ * Temporary stand-in shaped exactly like a row from `public.events`.
+ * Delete this once the events list passes a real row down as a prop.
+ */
+const SAMPLE_EVENT = {
+  id: 1,
+  name: "Beach Cleanup & Coastal Care Day",
+  description:
+    "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
+  location: "Santa Monica Beach, Santa Monica, CA",
+  start_datetime: "2026-09-12T16:00:00+00:00",
+  end_datetime: "2026-09-12T19:00:00+00:00",
+  organization: 1,
+  image: null, // no image column on `events` yet — falls back to an icon
+};
 
 export default function MapScreen({ navigation }) {
 
@@ -60,6 +76,10 @@ const handleClose = () => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  // Parent owns *which* event is showing; the sheet owns its own position.
+  const eventTabRef = useRef(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
   const [currentRegion, setCurrentRegion] = useState({
     latitude: 34.0211573,
     longitude: -118.4503864,
@@ -86,8 +106,11 @@ const handleClose = () => {
     })();
   }, []);
 
-  let text = "Waiting...";
-  text = JSON.stringify(location);
+  // This is the only thing the events list will need to call later, too.
+  const openEvent = (event) => {
+    setSelectedEvent(event);
+    eventTabRef.current?.open();
+  };
 
 
 
@@ -100,7 +123,7 @@ const handleClose = () => {
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
-        style={styles.map}
+        style={StyleSheet.absoluteFill}
         region={currentRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
@@ -111,7 +134,7 @@ const handleClose = () => {
           <TouchableOpacity
             style={[styles.userLocation, styles.shadow]}
             onPress={() => {
-              console.log("Go to user location!");
+              if (!location) return;
               const { latitude, longitude } = location.coords;
               setCurrentRegion({ ...currentRegion, latitude, longitude });
             }}
@@ -119,6 +142,7 @@ const handleClose = () => {
             <Ionicons name="navigate" size={15} color="black" />
           </TouchableOpacity>
         </View>
+
         <View style={[styles.bitmojiContainer, styles.shadow]}>
           <Pressable
             onPress={() => {
@@ -139,11 +163,8 @@ const handleClose = () => {
               </View>
             </View>
           </Pressable>
-          <Pressable
-            onPress={() => {
-              navigation.navigate("Event");
-            }}
-          >
+
+          <Pressable onPress={() => openEvent(SAMPLE_EVENT)}>
             <View style={styles.myBitmoji}>
               <Ionicons name="calendar-outline" size={50} color="gray" />
               <View style={styles.bitmojiTextContainer}>
@@ -185,6 +206,12 @@ const handleClose = () => {
 
 
       </View>
+
+      <EventPageTab
+        ref={eventTabRef}
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </View>
   );
 }
@@ -193,8 +220,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
   },
   mapFooter: {
     width: "100%",
@@ -205,10 +230,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 20,
     bottom: 0,
-  },
-  map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
   },
   locationContainer: {
     backgroundColor: "transparent",
@@ -275,5 +296,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  calendarIcon: {},
 });
