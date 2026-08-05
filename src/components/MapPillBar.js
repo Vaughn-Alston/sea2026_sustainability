@@ -17,6 +17,7 @@ import RestaurantsIcon from "../../assets/pill-icons/restaurant.svg";
 import CoffeeIcon from "../../assets/pill-icons/coffee.svg";
 import TreeIcon from "../../assets/pill-icons/tree.svg";
 import ShopsIcon from "../../assets/pill-icons/shops.svg";
+import FootstepsIcon from "../../assets/pill-icons/footsteps.svg";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -33,7 +34,7 @@ const PILLS = [
   { id: "memories", label: "Memories", Icon: MemoriesIcon },
   { id: "trending", label: "Trending", Icon: TrendingIcon },
   { id: "impacts", label: "Impacts", Icon: ImpactIcon },
-  { id: "footsteps", label: "Footsteps" },
+  { id: "footsteps", label: "Footsteps", Icon: FootstepsIcon },
   { id: "visited", label: "Visited", Icon: ClockIcon },
   { id: "popular", label: "Popular", Icon: PopularIcon },
   { id: "favorites", label: "Favorites", Icon: HeartIcon },
