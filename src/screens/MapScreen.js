@@ -181,52 +181,6 @@ export default function MapScreen({ navigation }) {
             <Ionicons name="navigate" size={15} color="black" />
           </TouchableOpacity>
         </View>
-
-        <View style={[styles.bitmojiContainer, styles.shadow]}>
-          <Pressable
-            onPress={() => {
-              setListVisible(true); //This line will open the party drawer modal when the button is pressed
-
-              console.log("Event List button pressed");
-            }}
-          >
-            <View style={styles.myBitmoji}>
-              <Ionicons name="list-outline" size={50} color="gray" />
-              <View style={styles.bitmojiTextContainer}>
-                <Text style={styles.bitmojiText}>Event List</Text>
-              </View>
-            </View>
-          </Pressable>
-
-          {/* Takes one event, not the whole list */}
-          <Pressable onPress={() => openEvent(SAMPLE_EVENTS[0])}>
-            <View style={styles.myBitmoji}>
-              <Ionicons name="calendar-outline" size={50} color="gray" />
-              <View style={styles.bitmojiTextContainer}>
-                <Text style={styles.bitmojiText}>Events</Text>
-              </View>
-            </View>
-          </Pressable>
-
-          <View style={styles.places}>
-            <Image
-              style={styles.bitmojiImage}
-              source={require("../../assets/snapchat/personalBitmoji.png")}
-            />
-            <View style={styles.bitmojiTextContainer}>
-              <Text style={styles.bitmojiText}>Places</Text>
-            </View>
-          </View>
-          <View style={styles.myFriends}>
-            <Image
-              style={styles.bitmojiImage}
-              source={require("../../assets/snapchat/personalBitmoji.png")}
-            />
-            <View style={styles.bitmojiTextContainer}>
-              <Text style={styles.bitmojiText}>Friends</Text>
-            </View>
-          </View>
-        </View>
       </View>
 
       {/* Here on line 143 This function will open my modal */}
