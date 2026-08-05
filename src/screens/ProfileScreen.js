@@ -14,8 +14,9 @@ import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../../utils/hooks/supabase";
 import { useAuthentication } from "../../utils/hooks/useAuthentication";
 
-import PartyDrawer from "../components/PartyDrawer";
+import EventList from "../components/EventList";
 
+//Here I will have my array of items filling the Story section of my profile scrren
 const storyItems = [
   {
     id: "story-1",
@@ -42,6 +43,9 @@ const storyItems = [
     icon: "🔒",
   },
 ];
+//end of Array for the story section of my profile screen
+
+
 
 const countdownItems = [
   {
@@ -51,6 +55,8 @@ const countdownItems = [
     icon: "📅",
   },
 ];
+
+
 
 const handleSignOut = async () => {
   try {
@@ -68,24 +74,20 @@ export default function ProfileScreen() {
 const navigation = useNavigation();
 const { user } = useAuthentication();
 
-  const [partyVisible, setPartyVisible] = useState(false);
-  const [partyMode, setPartyMode] = useState(false);
+  const [eventListVisible, setEventListVisible] = useState(false);
 
   const fakeName = "Isa Munoz";
   const fakeEmail = user?.email || "wendy_332";
 
-  const handleOpenPartyDrawer = () => {
-    setPartyVisible(true);
+  const handleOpenEventList = () => {
+    setEventListVisible(true);
   };
 
-  const handleClosePartyDrawer = () => {
-    setPartyVisible(false);
+  const handleCloseEventList = () => {
+    setEventListVisible(false);
   };
 
-  const handleStartParty = () => {
-    setPartyMode(true);
-    setPartyVisible(false);
-  };
+
 
   const handleMoreOptions = (item) => {
     console.log("Open more options for:", item.title);
@@ -247,10 +249,10 @@ const { user } = useAuthentication();
         </View>
       </ScrollView>
 
-      <PartyDrawer
-        visible={partyVisible}
-        onClose={handleClosePartyDrawer}
-        onStartParty={handleStartParty}
+      <EventList
+        visible={eventListVisible}
+        onClose={handleCloseEventList}
+        
       />
     </View>
   );

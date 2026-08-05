@@ -12,6 +12,7 @@ import AstrologyScreen from "../screens/AstrologyScreen";
 import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
 import EventListScreen from "../screens/EventListScreen";
+import EventPageScreen from "../screens/EventPageScreen";
 
 const Stack = createStackNavigator();
 
