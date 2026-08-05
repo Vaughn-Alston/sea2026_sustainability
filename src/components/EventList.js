@@ -15,6 +15,9 @@ import BottomSheet, {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 
+import EventCard from "./EventCard";
+
+
 const HANDLE_HEIGHT = 24;
 
 function SheetHandle() {
@@ -46,26 +49,7 @@ export default function PartyDrawer({
     [],
   );
 
-  const handleSelectHours = (hours) => {
-    setSelectedHours(hours);
-    setTimerModalVisible(false);
-  };
 
-  const handleSelectCoPilot = (coPilot) => {
-    setSelectedCoPilot(coPilot);
-    setPage("copilot");
-  };
-
-  const handleStartParty = () => {
-    onStartParty?.({
-      hours: selectedHours,
-      coPilot: selectedCoPilot,
-    });
-
-    setPage("planner");
-    setSelectedHours(null);
-    setSelectedCoPilot(null);
-  };
 
   // The X closes the physical bottom sheet
   const handleClosePress = useCallback(() => {
@@ -91,30 +75,63 @@ export default function PartyDrawer({
 
   return (
     <BottomSheet
-      ref={sheetRef}
-      index={-1}
-      snapPoints={snapPoints}
-      enableDynamicSizing={false}
-      enableHandlePanningGesture
-      enableContentPanningGesture
-      enablePanDownToClose={false}
-      handleComponent={SheetHandle}
-      backgroundStyle={styles.sheetBackground}
-      style={styles.sheetShadow}
-      onClose={handleSheetClose}
-    >
-      <BottomSheetView style={styles.drawer}>
-        <Pressable
-          style={styles.closeButton}
-          onPress={handleClosePress}
-          hitSlop={10}
-        >
-          <Text style={styles.closeButtonText}>✕</Text>
-        </Pressable>
+    ref={sheetRef}
+    index={-1}
+    snapPoints={snapPoints}
+    enableDynamicSizing={false}
+    enableHandlePanningGesture
+    enableContentPanningGesture
+    enablePanDownToClose={false}
+    handleComponent={SheetHandle}
+    backgroundStyle={styles.sheetBackground}
+    style={styles.sheetShadow}
+    onClose={handleSheetClose}
+  >
+    <BottomSheetView style={styles.drawer}>
+      <Pressable
+        style={styles.closeButton}
+        onPress={handleClosePress}
+        hitSlop={10}
+      >
+        <Text style={styles.closeButtonText}>✕</Text>
+      </Pressable>
 
-        {/* Empty bottom-sheet content */}
-      </BottomSheetView>
-    </BottomSheet>
+      <View style={styles.cardContainer}>
+     
+     
+
+        {/* Here I will have a event card that will hold the event information */}
+        <EventCard
+          title="Dockweiler Clean-Up"
+          dateTime="Sep 12 • 9:00 AM"
+          distance="3.7 mi"
+          tag="⭐ Beach Cleanup"
+          image= ""
+          attendees={[
+            {
+              id: "1",
+              image: ""
+            },
+            {
+              id: "2",
+              image:""
+            },
+          ]}
+          attendeeCount={2}
+          onPress={() => console.log("Event selected")}
+          onActionPress={() =>
+            console.log("Directions selected")
+          }
+        />
+
+
+
+
+          Hello
+
+      </View>
+    </BottomSheetView>
+  </BottomSheet>
   );
 }
 
@@ -139,6 +156,11 @@ const styles = StyleSheet.create({
   drawer: {
     flex: 1,
     backgroundColor: "#F7F7F9",
+  },
+
+  cardContainer: {
+    paddingTop: 60,
+    paddingHorizontal: 12,
   },
 
   handleContainer: {
