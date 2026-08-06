@@ -12,10 +12,11 @@ import {
   StyleSheet,
 } from "react-native";
 import BottomSheet, {
-  BottomSheetView,
+  BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 
 import EventCard from "./EventCard";
+import { formatDate, formatTime } from "../../utils/datetimeUtil";
 
 
 const HANDLE_HEIGHT = 24;
@@ -31,7 +32,9 @@ function SheetHandle() {
 
 export default function EventList({
   visible,
+  events = [],
   onClose,
+  onSelectEvent,
 }) {
   const [page, setPage] = useState("planner");
 
@@ -84,7 +87,11 @@ export default function EventList({
     style={styles.sheetShadow}
     onClose={handleSheetClose}
   >
-    <BottomSheetView style={styles.drawer}>
+    <BottomSheetScrollView
+      style={styles.drawer}
+      contentContainerStyle={styles.cardContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <Pressable
         style={styles.closeButton}
         onPress={handleClosePress}
@@ -93,41 +100,27 @@ export default function EventList({
         <Text style={styles.closeButtonText}>✕</Text>
       </Pressable>
 
-      <View style={styles.cardContainer}>
-     
-     
-
-        {/* Here I will have a event card that will hold the event information */}
+      {/* event handed from the map screen */}
+      {events.map((event) => (
         <EventCard
-          title="Dockweiler Clean-Up"
-          dateTime="Sep 12 • 9:00 AM"
-          distance="3.7 mi"
-          tag="⭐ Beach Cleanup"
-          image= ""
-          attendees={[
-            {
-              id: "1",
-              image: ""
-            },
-            {
-              id: "2",
-              image:""
-            },
-          ]}
-          attendeeCount={2}
-          onPress={() => console.log("Event selected")}
+          key={event.id}
+          title={event.name}
+          dateTime={`${formatDate(event.start_datetime)} • ${formatTime(
+            event.start_datetime,
+          )}`}
+          distance=""
+          tag=""
+          image={event.image ?? ""}
+          attendees={[]}
+          attendeeCount={0}
+          // Hands the whole row back up so event page gets every field
+          onPress={() => onSelectEvent?.(event)}
           onActionPress={() =>
-            console.log("Directions selected")
+            console.log("Directions selected", event.location)
           }
         />
-
-
-
-
-        
-
-      </View>
-    </BottomSheetView>
+      ))}
+    </BottomSheetScrollView>
   </BottomSheet>
   );
 }
@@ -158,6 +151,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     paddingTop: 60,
     paddingHorizontal: 12,
+    paddingBottom: 40,
   },
 
   handleContainer: {
