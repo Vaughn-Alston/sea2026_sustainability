@@ -182,6 +182,9 @@ const handleClose = () => {
        </View>
             
        </View>
+          
+
+
 
 
        {/* Here on line 143 This function will open my modal */}
@@ -191,12 +194,7 @@ const handleClose = () => {
                   //Here I am using the default function onClose() to pass false towards the component
                   //This will give onClose() the ability to close the modal when called
                   onClose={() => setPartyVisible(false)}
-         />
-
-
-
-
-
+              />
 
       <EventPageTab
         ref={eventTabRef}

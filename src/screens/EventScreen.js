@@ -16,6 +16,9 @@ import AddEvent from "../components/AddEvent";
 import EventInfo from "../components/EventInfo";
 import { supabase } from "../../utils/hooks/supabase";
 
+import { ascheduledevents } from "../data/ascheduledevents";
+
+
 export default function EventScreen({ route, navigation }) {
   const [visible, setVisible] = useState(false);
   const [events, setEvents] = useState([]);
