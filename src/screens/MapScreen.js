@@ -179,70 +179,18 @@ export default function MapScreen({ navigation }) {
         </View>
       </View>
 
-        <View style={[styles.bitmojiContainer, styles.shadow]}>
-          <Pressable
-            onPress={() => {
-
-            setPartyVisible(true); //This line will open the party drawer modal when the button is pressed
-
-            console.log("Event List button pressed");
-
-
-              //This line will take you to a new screen called EventListScreen when the button is pressed
-              // navigation.navigate("EventListScreen");
-            }}
-          >
-            <View style={styles.myBitmoji}>
-              <Ionicons name="list-outline" size={50} color="gray" />
-              <View style={styles.bitmojiTextContainer}>
-                <Text style={styles.bitmojiText}>Event List</Text>
-              </View>
-            </View>
-          </Pressable>
-
-          <Pressable onPress={() => openEvent(SAMPLE_EVENT)}>
-            <View style={styles.myBitmoji}>
-              <Ionicons name="calendar-outline" size={50} color="gray" />
-              <View style={styles.bitmojiTextContainer}>
-                <Text style={styles.bitmojiText}>Events</Text>
-              </View>
-            </View>
-          </Pressable>
-
-          <View style={styles.places}>
-            <Image
-              style={styles.bitmojiImage}
-              source={require("../../assets/snapchat/personalBitmoji.png")}
-            />
-            <View style={styles.bitmojiTextContainer}>
-              <Text style={styles.bitmojiText}>Places</Text>
-            </View>
-          </View>
-          <View style={styles.myFriends}>
-            <Image
-              style={styles.bitmojiImage}
-              source={require("../../assets/snapchat/personalBitmoji.png")}
-            />
-            <View style={styles.bitmojiTextContainer}>
-              <Text style={styles.bitmojiText}>Friends</Text>
-            </View>
-          </View>
-       </View>
-            
-       </View>
-          
-
-
-
-
-       {/* Here on line 143 This function will open my modal */}
-              <PartyDrawer
-              // Here I will pass the state variable to the PartyDrawer component
-                  visible={partyVisible}
-                  //Here I am using the default function onClose() to pass false towards the component
-                  //This will give onClose() the ability to close the modal when called
-                  onClose={() => setPartyVisible(false)}
-              />
+      {/* Here on line 143 This function will open my modal */}
+      <EventList
+        // Here I will pass the state variable to the PartyDrawer component
+        visible={listVisible}
+        // renders list - comes from supabase later
+        events={SAMPLE_EVENTS}
+        // Tapping a card sends the whole event row back up here
+        onSelectEvent={handleSelectEvent}
+        //Here I am using the default function onClose() to pass false towards the component
+        //This will give onClose() the ability to close the modal when called
+        onClose={handleListClosed}
+      />
 
       <EventPageTab
         ref={eventTabRef}
@@ -250,6 +198,9 @@ export default function MapScreen({ navigation }) {
         onClose={handleEventClosed}
       />
     </View>
+
+
+
   );
 }
 
