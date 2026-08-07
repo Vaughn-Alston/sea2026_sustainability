@@ -13,7 +13,7 @@ import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
 
 
-
+//Kev_Dev Removed these
 // import EventListScreen from "../screens/EventListScreen";
 // import EventPageScreen from "../screens/EventPageScreen";
 // import ImpactScreen from "../screens/ImpactScreen";
@@ -76,7 +76,7 @@ export default function App() {
           options={{ headerShown: true }}
         />
 
-        
+
         {/* Here we will start */}
         {/* <Stack.Screen
           name="EventListScreen"
