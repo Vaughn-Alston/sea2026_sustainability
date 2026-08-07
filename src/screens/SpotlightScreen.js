@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { FlatList, Image, StyleSheet } from "react-native";
+import { FlatList, Image, StyleSheet, Pressable, Text } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 const RAWDATA = [
   {
@@ -52,19 +53,29 @@ const renderItem = ({ item }) => {
 };
 
 export default function SpotlightScreen() {
+    const navigation = useNavigation();
     useEffect(() => {
       console.log("useEffect ran");
       filterValidImages(RAWDATA);
     }
   );
   return (
-    <FlatList
-      contentContainerStyle={styles.container}
-      pagingEnabled={true}
-      data={DATA}
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-    />
+    <>
+      {/* TEMP: preview button for ImpactScreen, remove once wired up properly */}
+      <Pressable
+        style={styles.tempImpactButton}
+        onPress={() => navigation.navigate("Impact")}
+      >
+        <Text style={styles.tempImpactButtonText}>View Impact (temp)</Text>
+      </Pressable>
+      <FlatList
+        contentContainerStyle={styles.container}
+        pagingEnabled={true}
+        data={DATA}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+      />
+    </>
   );
 }
 
@@ -78,5 +89,20 @@ const styles = StyleSheet.create({
   },
   image: {
     height: 800,
+  },
+  tempImpactButton: {
+    position: "absolute",
+    top: 60,
+    alignSelf: "center",
+    zIndex: 10,
+    backgroundColor: "#FFFC00",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+  },
+  tempImpactButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111111",
   },
 });

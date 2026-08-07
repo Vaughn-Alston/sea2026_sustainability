@@ -30,6 +30,7 @@ import { scheduledEvents } from "../data/ascheduledevents";
 
 //I want to import my EventCard component so I can use it in my EventList component so Display Cards to hold my Data from file
 import EventCard from "./EventCard";
+import { formatDate, formatTime } from "../../utils/datetimeUtil";
 
 
 
@@ -46,7 +47,9 @@ function SheetHandle() {
 
 export default function EventList({
   visible,
+  events = [],
   onClose,
+  onSelectEvent,
 }) {
   const [page, setPage] = useState("planner");
   const [openModal, setOpenModal] = useState(null);

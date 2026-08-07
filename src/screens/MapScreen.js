@@ -10,69 +10,85 @@ import {
 } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 
 //Here Im importing the event drawer modal
-import PartyDrawer from "../components/EventList";
+import EventList from "../components/EventList";
 
 import * as Location from "expo-location";
 
 import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
+import MapPillBar from "../components/MapPillBar";
 
-/**
- * Temporary stand-in shaped exactly like a row from `public.events`.
- * Delete this once the events list passes a real row down as a prop.
- */
-const SAMPLE_EVENT = {
-  id: 1,
-  name: "Beach Cleanup & Coastal Care Day",
-  description:
-    "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
-  location: "Santa Monica Beach, Santa Monica, CA",
-  start_datetime: "2026-09-12T16:00:00+00:00",
-  end_datetime: "2026-09-12T19:00:00+00:00",
-  organization: 1,
-  image: null, // no image column on `events` yet — falls back to an icon
-};
+// Stands in for the events query until the list pulls from supabase
+const SAMPLE_EVENTS = [
+  {
+    id: 1,
+    name: "Beach Cleanup & Coastal Care Day",
+    description:
+      "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
+    location: "Santa Monica Beach, Santa Monica, CA",
+    start_datetime: "2026-09-12T16:00:00+00:00",
+    end_datetime: "2026-09-12T19:00:00+00:00",
+    organization: 1,
+    image: null,
+  },
+  {
+    id: 2,
+    name: "Urban Garden & Composting Workshop",
+    description:
+      "Hands-on session covering composting basics, soil health, and what to do with kitchen scraps in a small apartment.",
+    location: "Griffith Park Community Garden, Los Angeles, CA",
+    start_datetime: "2026-09-19T17:00:00+00:00",
+    end_datetime: "2026-09-19T19:00:00+00:00",
+    organization: 1,
+    image: null,
+  },
+  {
+    id: 3,
+    name: "Zero Waste Swap Meet",
+    description:
+      "A community clothing and household goods swap. Bring what you no longer use, take home something someone else loved.",
+    location: "Echo Park, Los Angeles, CA",
+    start_datetime: "2026-09-26T18:00:00+00:00",
+    end_datetime: "2026-09-26T21:00:00+00:00",
+    organization: 2,
+    image: null,
+  },
+];
 
 export default function MapScreen({ navigation }) {
-
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
 
+  //Here will be the state variables for the list
+  const [listVisible, setListVisible] = useState(false);
 
-
- //Here will be the state variables for the drawer 
-const [partyVisible, setPartyVisible] = useState(false);
-
-
-
-//This will handle the closing of the Modal
-const handleClose = () => {
-    //Set the screen back to the map screen
-    setPage("MapScreen"); 
+  //This will handle the closing of the Modal
+  const handleClose = () => {
     //close the party modal
-    setPartyVisible(false);
-};
+    setListVisible(false);
+  };
 
-
-
-//This will open my party drawer modal
+  //This will open event list modal
   const handleOpen = () => {
-    setPartyVisible(true);
+    setListVisible(true);
   };
 
   //Now I need to find the button that opens the page if the Event list button is clicked
   //So I can opent the party drawer modal from the event list page
 
-
-
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Parent owns *which* event is showing; the sheet owns its own position.
+  // Parent owns which event is showing; the sheet owns its own position
   const eventTabRef = useRef(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // Only send the list back up if that's where the event came from
+  const [returnToList, setReturnToList] = useState(false);
 
   const [currentRegion, setCurrentRegion] = useState({
     latitude: 34.0211573,
@@ -100,14 +116,39 @@ const handleClose = () => {
     })();
   }, []);
 
-  // This is the only thing the events list will need to call later, too.
-  const openEvent = (event) => {
+  const openEvent = (event, { fromList = false } = {}) => {
+    setReturnToList(fromList);
     setSelectedEvent(event);
-    eventTabRef.current?.open();
   };
 
+  const handleSelectEvent = (event) => {
+    setListVisible(false);
+    openEvent(event, { fromList: true });
+  };
 
-  // Everything below here will render the functions go above
+  const handleListClosed = () => {
+    setListVisible(false);
+  };
+
+  // Closing the event page brings back event list
+  const handleEventClosed = () => {
+    setSelectedEvent(null);
+
+    if (returnToList) {
+      setReturnToList(false);
+      setListVisible(true);
+    }
+  };
+
+  const handlePillSelect = (id) => {
+    if (id !== "impacts") {
+      console.log("Pill pressed:", id);
+      return;
+    }
+
+    setListVisible(true);
+  };
+
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
@@ -115,6 +156,12 @@ const handleClose = () => {
         region={currentRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
+      />
+
+      {/* pills hide while off the map, or while either modal is open */}
+      <MapPillBar
+        visible={isFocused && !selectedEvent && !listVisible}
+        onSelect={handlePillSelect}
       />
 
       <View style={[styles.mapFooter]}>
@@ -130,6 +177,7 @@ const handleClose = () => {
             <Ionicons name="navigate" size={15} color="black" />
           </TouchableOpacity>
         </View>
+      </View>
 
         <View style={[styles.bitmojiContainer, styles.shadow]}>
           <Pressable
@@ -199,9 +247,8 @@ const handleClose = () => {
       <EventPageTab
         ref={eventTabRef}
         event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
+        onClose={handleEventClosed}
       />
-
     </View>
   );
 }

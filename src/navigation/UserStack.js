@@ -11,8 +11,12 @@ import FriendStory from "../screens/FriendStory";
 import AstrologyScreen from "../screens/AstrologyScreen";
 import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
-import EventListScreen from "../screens/EventListScreen";
-import EventPageScreen from "../screens/EventPageScreen";
+
+
+//Kev_Dev Removed these
+// import EventListScreen from "../screens/EventListScreen";
+// import EventPageScreen from "../screens/EventPageScreen";
+// import ImpactScreen from "../screens/ImpactScreen";
 
 const Stack = createStackNavigator();
 
@@ -71,7 +75,10 @@ export default function App() {
           component={EventScreen}
           options={{ headerShown: true }}
         />
-        <Stack.Screen
+
+
+        {/* Here we will start */}
+        {/* <Stack.Screen
           name="EventListScreen"
           component={EventListScreen}
           options={{
@@ -79,6 +86,13 @@ export default function App() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="Impact"
+          component={ImpactScreen}
+          options={{ headerShown: false }}
+        /> */}
+
+        {/* End  */}
       </Stack.Navigator>
     </NavigationContainer>
   );
