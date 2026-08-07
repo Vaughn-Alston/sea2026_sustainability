@@ -211,45 +211,33 @@ export default function EventList({
           }
           showsVerticalScrollIndicator={false}
         >
+
+          {/* Start here */}
           {selectedTab === "events"
-            ? anytimeEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  actionType="rsvp"
-                  selected={rsvpEventIds.includes(
-                    event.id,
-                  )}
-                  onActionPress={() =>
-                    toggleRsvp(event.id)
-                  }
-                  onPress={() => {
-                    console.log(
-                      "Scheduled event selected:",
-                      event.id,
-                    );
-                  }}
-                />
-              ))
-            : scheduledEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  actionType="bookmark"
-                  selected={savedPlaceIds.includes(
-                    event.id,
-                  )}
-                  onActionPress={() =>
-                    toggleSavedPlace(event.id)
-                  }
-                  onPress={() => {
-                    console.log(
-                      "Recurring place selected:",
-                      event.id,
-                    );
-                  }}
-                />
-              ))}
+  ? anytimeEvents.map((event) => (
+      <EventCard
+        key={event.id}
+        event={event}
+        actionType="rsvp"
+        selected={rsvpEventIds.includes(event.id)}
+        onActionPress={() =>
+          toggleRsvp(event.id)
+        }
+        onPress={() => onSelectEvent?.(event)}
+      />
+    ))
+  : scheduledEvents.map((event) => (
+      <EventCard
+        key={event.id}
+        event={event}
+        actionType="bookmark"
+        selected={savedPlaceIds.includes(event.id)}
+        onActionPress={() =>
+          toggleSavedPlace(event.id)
+        }
+        onPress={() => onSelectEvent?.(event)}
+      />
+    ))}
         </BottomSheetScrollView>
       </View>
     </BottomSheet>
