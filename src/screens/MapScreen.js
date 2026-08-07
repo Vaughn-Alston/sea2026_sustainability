@@ -198,6 +198,9 @@ export default function MapScreen({ navigation }) {
         onClose={handleEventClosed}
       />
     </View>
+
+
+
   );
 }
 
