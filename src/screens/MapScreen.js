@@ -63,6 +63,9 @@ export default function MapScreen({ navigation }) {
   const eventTabRef = useRef(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
+  // map ref - the map is uncontrolled now, so recentering goes through here instead of through currentRegion
+  const mapRef = useRef(null);
+
   // Only send the list back up if that's where the event came from
   const [returnToList, setReturnToList] = useState(false);
 
@@ -84,6 +87,14 @@ export default function MapScreen({ navigation }) {
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
       setCurrentRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      });
+
+      // initialRegion only lands on first render, so the jump to the user has to be animated in
+      mapRef.current?.animateToRegion({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         latitudeDelta: 0.0922,
@@ -115,9 +126,27 @@ export default function MapScreen({ navigation }) {
     };
   }, []);
 
+  // drops the pin in the visible part of the map - the sheet covers the bottom half, so the center is moved south to sit above it
+  const focusOnItem = useCallback((item) => {
+    if (!item || item.latitude == null || item.longitude == null) return;
+
+    mapRef.current?.animateToRegion(
+      {
+        latitude: item.latitude - 0.012,
+        longitude: item.longitude,
+        latitudeDelta: 0.045,
+        longitudeDelta: 0.045,
+      },
+      450,
+    );
+  }, []);
+
   const openEvent = (event, { fromList = false } = {}) => {
     setReturnToList(fromList);
     setSelectedEvent(event);
+
+    // recenter whether the row came from the list or from a pin press
+    focusOnItem(event);
   };
 
   const handleSelectEvent = (event) => {
@@ -202,14 +231,12 @@ export default function MapScreen({ navigation }) {
     );
   }, []);
 
-  console.log("URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
-  console.log("KEY:", process.env.EXPO_PUBLIC_SUPABASE_KEY?.slice(0, 12));
-  console.log("KEY:", process.env.EXPO_PUBLIC_SUPABASE_KEY?.length);
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
-        region={currentRegion}
+        initialRegion={currentRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
@@ -244,6 +271,14 @@ export default function MapScreen({ navigation }) {
               if (!location) return;
               const { latitude, longitude } = location.coords;
               setCurrentRegion({ ...currentRegion, latitude, longitude });
+
+              // animate to pin
+              mapRef.current?.animateToRegion({
+                latitude,
+                longitude,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              });
             }}
           >
             <Ionicons name="navigate" size={15} color="black" />

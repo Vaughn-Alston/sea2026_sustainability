@@ -32,7 +32,7 @@ function normalizeEvent(row) {
     start_datetime: row.start_datetime,
     end_datetime: row.end_datetime,
     hours: null,
-    category: null,
+    category: row.category,
     organization: row.organization,
     organizationName: row.organizations?.name ?? null,
     organizationPagelink: row.organizations?.pagelink ?? null,

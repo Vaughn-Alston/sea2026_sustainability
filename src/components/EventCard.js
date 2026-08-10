@@ -32,8 +32,7 @@ export default function EventCard({
   const distance = formatDistance(distanceFromUser(userLocation, event));
 
   // "Water" / "Food" on drop-ins, org name on scheduled events
-  const tag =
-    event.kind === "anytime" ? event.category : event.organizationName;
+  const tag = event.category;
 
   const handleHeartPress = (pressEvent) => {
     // Prevent the full card's onPress from running
