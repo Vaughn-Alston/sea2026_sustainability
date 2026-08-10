@@ -30,7 +30,6 @@ import { scheduledEvents } from "../data/ascheduledevents";
 
 //I want to import my EventCard component so I can use it in my EventList component so Display Cards to hold my Data from file
 import EventCard from "./EventCard";
-import { formatDate, formatTime } from "../../utils/datetimeUtil";
 
 
 
@@ -51,17 +50,33 @@ export default function EventList({
   onClose,
   onSelectEvent,
 }) {
-  const [page, setPage] = useState("planner");
-  const [openModal, setOpenModal] = useState(null);
 
-  const [selectedTab, setSelectedTab] =
-    useState("events");
+const [page, setPage] = useState("planner");
 
-  const [rsvpEventIds, setRsvpEventIds] =
+const [openModal, setOpenModal] = useState(null);
+
+
+//// options: "events", "dropIn", "saved" defult towards events
+const [selectedTab, setSelectedTab] = useState("events");
+
+const [rsvpEventIds, setRsvpEventIds] =
     useState([]);
 
-  const [savedPlaceIds, setSavedPlaceIds] =
-    useState([]);
+//This will create a empty array for my saved events that I want to hold
+const [savedEvents, setSavedEvents] =
+  useState([]);
+
+const visibleEvents =
+  selectedTab === "events"
+    ? scheduledEvents
+    : selectedTab === "anytime"
+      ? anytimeEvents
+      : savedEvents;
+
+const impactCount = visibleEvents.length;
+
+
+
 
   const toggleRsvp = (eventId) => {
     setRsvpEventIds((currentIds) => {
@@ -78,20 +93,46 @@ export default function EventList({
     });
   };
 
-  const toggleSavedPlace = (placeId) => {
-    setSavedPlaceIds((currentIds) => {
-      const isSaved =
-        currentIds.includes(placeId);
 
-      if (isSaved) {
-        return currentIds.filter(
-          (id) => id !== placeId,
-        );
-      }
 
-      return [...currentIds, placeId];
-    });
-  };
+
+//Here I implemented a function that will toggle the saved events
+//Take in event obct and eventType, so events, dropIn, Saved
+ const toggleSavedEvent = (event, eventType) => {
+
+  setSavedEvents((currentEvents) => {
+
+    //Look through the Saved event array, if event in array then already saved
+    const isSaved = currentEvents.some(
+
+      //.some() will return true if one of the elements matches
+      //else false
+      (savedEvent) => savedEvent.id === event.id
+    );
+
+    //If true this line will run - >  the event is already saved, remove it from the array
+    if (isSaved) {
+      return currentEvents.filter(
+        (savedEvent) =>
+          //Keep every saved event except the one with the same id that is being liked
+          savedEvent.id !== event.id
+      );
+    }
+    //else if false the event is not saved
+    return [
+      //Keep all current events
+      ...currentEvents,
+      {
+        //add the event the user just clicked and its type
+        ...event,
+        eventType,
+      },
+    ];
+  });
+};
+
+
+
 
   const sheetRef = useRef(null);
 
@@ -140,9 +181,7 @@ export default function EventList({
             </Text>
 
             <Text style={styles.impactCount}>
-              {selectedTab === "events"
-                ? anytimeEvents.length
-                : scheduledEvents.length}
+              {impactCount}
             </Text>
           </View>
 
@@ -158,6 +197,9 @@ export default function EventList({
         </View>
 
         <View style={styles.tabRow}>
+          {/* Here will start the start of my table with my categories */}
+
+          {/* Tab 1 */}
           <Pressable
             style={styles.tabButton}
             onPress={() =>
@@ -180,7 +222,9 @@ export default function EventList({
               />
             )}
           </Pressable>
+          {/* End of Tab 1 */}
 
+          {/* Tab 2 */}
           <Pressable
             style={styles.tabButton}
             onPress={() =>
@@ -194,7 +238,7 @@ export default function EventList({
                   styles.activeTabText,
               ]}
             >
-              Anytime
+              Drop- IN
             </Text>
 
             {selectedTab === "anytime" && (
@@ -203,7 +247,41 @@ export default function EventList({
               />
             )}
           </Pressable>
+          {/* End of Tab 2 */}
+
+
+          {/* Here I created the seperate tab */}
+          {/* Tab 3  - This will be the saved events*/}
+          <Pressable
+            style={styles.tabButton}
+            onPress={() =>
+              setSelectedTab("saved")
+            }
+          >
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === "saved" &&
+                  styles.activeTabText,
+              ]}
+            >
+              Saved
+            </Text>
+
+            {selectedTab === "saved" && (
+              <View
+                style={styles.activeTabIndicator}
+              />
+            )}
+          </Pressable>
+          {/* End of Tab 3 */}
+
+
+
+
+{/* The end of my tables */}
         </View>
+
 
         <BottomSheetScrollView
           contentContainerStyle={
@@ -213,31 +291,41 @@ export default function EventList({
         >
 
           {/* Start here */}
-          {selectedTab === "events"
-  ? anytimeEvents.map((event) => (
-      <EventCard
-        key={event.id}
-        event={event}
-        actionType="rsvp"
-        selected={rsvpEventIds.includes(event.id)}
-        onActionPress={() =>
-          toggleRsvp(event.id)
-        }
-        onPress={() => onSelectEvent?.(event)}
-      />
-    ))
-  : scheduledEvents.map((event) => (
-      <EventCard
-        key={event.id}
-        event={event}
-        actionType="bookmark"
-        selected={savedPlaceIds.includes(event.id)}
-        onActionPress={() =>
-          toggleSavedPlace(event.id)
-        }
-        onPress={() => onSelectEvent?.(event)}
-      />
-    ))}
+          {visibleEvents.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No saved events yet.
+            </Text>
+          ) : (
+            visibleEvents.map((event) => {
+              const eventType =
+                event.eventType ??
+                (selectedTab === "anytime"
+                  ? "dropIn"
+                  : "events");
+              const isSaved = savedEvents.some(
+                (savedEvent) =>
+                  savedEvent.id === event.id,
+              );
+
+              return (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  liked={isSaved}
+                  selected={rsvpEventIds.includes(event.id)}
+                  onLikePress={() =>
+                    toggleSavedEvent(event, eventType)
+                  }
+                  onActionPress={() =>
+                    toggleRsvp(event.id)
+                  }
+                  onPress={() =>
+                    onSelectEvent?.(event)
+                  }
+                />
+              );
+            })
+          )}
         </BottomSheetScrollView>
       </View>
     </BottomSheet>
@@ -355,5 +443,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 50,
+  },
+
+  emptyText: {
+    marginTop: 20,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#777777",
   },
 });
