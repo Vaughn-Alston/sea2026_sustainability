@@ -11,12 +11,8 @@ import FriendStory from "../screens/FriendStory";
 import AstrologyScreen from "../screens/AstrologyScreen";
 import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
-
-
-//Kev_Dev Removed these
-// import EventListScreen from "../screens/EventListScreen";
-// import EventPageScreen from "../screens/EventPageScreen";
-// import ImpactScreen from "../screens/ImpactScreen";
+import ImpactScreen from "../screens/ImpactScreen";
+import SendToScreen from "../screens/SendToScreen";
 
 const Stack = createStackNavigator();
 
@@ -75,24 +71,16 @@ export default function App() {
           component={EventScreen}
           options={{ headerShown: true }}
         />
-
-
-        {/* Here we will start */}
-        {/* <Stack.Screen
-          name="EventListScreen"
-          component={EventListScreen}
-          options={{
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
         <Stack.Screen
           name="Impact"
           component={ImpactScreen}
           options={{ headerShown: false }}
-        /> */}
-
-        {/* End  */}
+        />
+        <Stack.Screen
+          name="SendTo"
+          component={SendToScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
