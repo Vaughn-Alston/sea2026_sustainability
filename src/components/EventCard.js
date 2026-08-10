@@ -1,51 +1,45 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  Pressable,
-  StyleSheet,
-} from "react-native";
+import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
+import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
 
-
-//I need to import my data to display on my modal
-
-import {anytimeEvents } from "../data/anytimeEvents";
-import {ascheduledevents} from "../data/ascheduledevents";
-
-
-
-
-
-
-
+/**
+ * EventCard
+ *   Takes one normalized row from eventsAPI and derives its own display trings, so the list doesn't have to spread a dozen props per card
+ *   Works for both kinds — `event` rows show a date, `anytime` rows show Open Now.
+ */
 export default function EventCard({
-  title,
-  image,
-  dateTime,
-  distance,
-  tag,
-  attendees = [],
-  attendeeCount = 0,
-  initialLikes = 7,
+  event,
+  actionType = "rsvp",
+  selected = false,
+  userLocation,
   onPress,
   onActionPress,
+  onDirectionsPress,
+  initialLikes = 7,
 }) {
-  const visibleAttendees = attendees.slice(0, 3);
-
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikes);
 
-  const [rsvp, setRsvp] = useState(false);
+  // scheduled rows get a date line, drop-ins get open status instead
+  const dateTime =
+    event.kind === "event"
+      ? formatEventWhen(event.start_datetime, event.end_datetime)
+      : formatOpenState(event.hours);
 
+  const distance = formatDistance(distanceFromUser(userLocation, event));
 
-  const handleHeartPress = (event) => {
-    // Prevent the full card's onPress from running.
-    event.stopPropagation?.();
+  // "Water" / "Food" on drop-ins, org name on scheduled events
+  const tag =
+    event.kind === "anytime" ? event.category : event.organizationName;
 
-    // The user can only increment the count once.
+  const handleHeartPress = (pressEvent) => {
+    // Prevent the full card's onPress from running
+    pressEvent.stopPropagation?.();
+
+    // The user can only increment the count once
     if (liked) return;
 
     setLiked(true);
@@ -54,15 +48,12 @@ export default function EventCard({
 
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
       {/* Circular image on the far left */}
-      {image ? (
-        <Image source={image} style={styles.cardMedia} />
+      {event.thumbnail ? (
+        <Image source={{ uri: event.thumbnail }} style={styles.cardMedia} />
       ) : (
         <View style={[styles.cardMedia, styles.imagePlaceholder]}>
           <Text style={styles.imagePlaceholderText}>IMG</Text>
@@ -72,7 +63,7 @@ export default function EventCard({
       {/* Main card information */}
       <View style={styles.cardContent}>
         <Text style={styles.title} numberOfLines={1}>
-          {title}
+          {event.name}
         </Text>
 
         {!!dateTime && (
@@ -81,40 +72,19 @@ export default function EventCard({
           </Text>
         )}
 
-        {!!distance && (
-          <Text style={styles.distance}>
-            {distance}
-          </Text>
-        )}
+        {!!distance && <Text style={styles.distance}>{distance}</Text>}
 
         {!!tag && (
           <View style={styles.tag}>
-            <Text style={styles.tagText}>
-              {tag}
-            </Text>
+            <Text style={styles.tagText}>{tag}</Text>
           </View>
         )}
 
-        <View style={styles.attendeeContainer}>
-          <View style={styles.avatarGroup}>
-            {visibleAttendees.map((attendee, index) => (
-              <Image
-                key={attendee.id ?? index}
-                source={attendee.image ?? attendee}
-                style={[
-                  styles.attendeeAvatar,
-                  index > 0 && styles.overlappingAvatar,
-                ]}
-              />
-            ))}
+        {event.attendeeCount > 0 && (
+          <View style={styles.attendeeContainer}>
+            <Text style={styles.attendeeText}>{event.attendeeCount} Going</Text>
           </View>
-
-          {attendeeCount > 0 && (
-            <Text style={styles.attendeeText}>
-              {attendeeCount} Going
-            </Text>
-          )}
-        </View>
+        )}
       </View>
 
       {/* Actions on the far right */}
@@ -130,61 +100,52 @@ export default function EventCard({
             color={liked ? "#E53935" : "#555555"}
           />
 
-          <Text
-            style={[
-              styles.likeCount,
-              liked && styles.likedCount,
-            ]}
-          >
+          <Text style={[styles.likeCount, liked && styles.likedCount]}>
             {likeCount}
           </Text>
         </Pressable>
 
-
-
-
-
-
         {/* Here I will create a rsvp button that will track the user if he clicks it */}
-
-   <Pressable
-          style={styles.actionButton}
-          onPress={(event) => {
-            event.stopPropagation?.();
-            onActionPress?.();
-          }}
-          
-        >
-
-
-     
-
-            <Text  style={styles.attendeeText}>
-
-
-            RSVP
-
-            </Text>
-
-     </Pressable>
-
-
-
-        
-
         <Pressable
-          style={styles.actionButton}
-          onPress={(event) => {
-            event.stopPropagation?.();
+          style={[
+            styles.actionButton,
+            styles.rsvpButton,
+            selected && styles.actionButtonSelected,
+          ]}
+          onPress={(pressEvent) => {
+            pressEvent.stopPropagation?.();
             onActionPress?.();
           }}
           hitSlop={8}
         >
-          <Ionicons
-            name="navigate"
-            size={23}
-            color="#111111"
-          />
+          {actionType === "rsvp" ? (
+            <Text
+              style={[
+                styles.actionLabel,
+                selected && styles.actionLabelSelected,
+              ]}
+            >
+              {selected ? "RSVP'D" : "RSVP"}
+            </Text>
+          ) : (
+            <Ionicons
+              name={selected ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color={selected ? "#FFFFFF" : "#111111"}
+            />
+          )}
+        </Pressable>
+
+        {/* directions is its own handler - it used to share onActionPress, which meant tapping it toggled the rsvp */}
+        <Pressable
+          style={styles.actionButton}
+          onPress={(pressEvent) => {
+            pressEvent.stopPropagation?.();
+            onDirectionsPress?.();
+          }}
+          hitSlop={8}
+        >
+          <Ionicons name="navigate" size={23} color="#111111" />
         </Pressable>
       </View>
     </Pressable>
@@ -302,7 +263,6 @@ const styles = StyleSheet.create({
   },
 
   attendeeText: {
-    marginLeft: 7,
     fontSize: 14,
     fontWeight: "600",
     color: "#444444",
@@ -341,5 +301,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EEF1F3",
+  },
+
+  rsvpButton: {
+    width: 62,
+  },
+
+  actionButtonSelected: {
+    backgroundColor: "#111111",
+  },
+
+  actionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#111111",
+  },
+
+  actionLabelSelected: {
+    color: "#FFFFFF",
   },
 });

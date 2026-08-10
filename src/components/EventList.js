@@ -1,4 +1,3 @@
-
 // React Imports
 import React, {
   useCallback,
@@ -13,27 +12,14 @@ import {
   Text,
   Pressable,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 
-
-
 //this will allow me to use the bottom sheet component in my app
-import BottomSheet, {
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet";
-
-
-
-//This line of code I will be importing my data from my data files
-import { anytimeEvents } from "../data/anytimeEvents";
-import { scheduledEvents } from "../data/ascheduledevents";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 
 //I want to import my EventCard component so I can use it in my EventList component so Display Cards to hold my Data from file
 import EventCard from "./EventCard";
-import { formatDate, formatTime } from "../../utils/datetimeUtil";
-
-
-
 
 const HANDLE_HEIGHT = 24;
 
@@ -45,60 +31,49 @@ function SheetHandle() {
   );
 }
 
+// Both tabs render from props - parent owns the supabase fetch
+// map and this sheet share one dataset instead of querying twice
+// events are scheduled, anytimeImpacts the drop-in places
 export default function EventList({
   visible,
   events = [],
+  anytimeImpacts = [],
+  loading = false,
+  userLocation,
+  rsvpEventIds = [],
+  onToggleRsvp,
   onClose,
   onSelectEvent,
+  onDirections,
 }) {
   const [page, setPage] = useState("planner");
   const [openModal, setOpenModal] = useState(null);
 
-  const [selectedTab, setSelectedTab] =
-    useState("events");
+  const [selectedTab, setSelectedTab] = useState("events");
 
-  const [rsvpEventIds, setRsvpEventIds] =
-    useState([]);
-
-  const [savedPlaceIds, setSavedPlaceIds] =
-    useState([]);
-
-  const toggleRsvp = (eventId) => {
-    setRsvpEventIds((currentIds) => {
-      const hasRsvped =
-        currentIds.includes(eventId);
-
-      if (hasRsvped) {
-        return currentIds.filter(
-          (id) => id !== eventId,
-        );
-      }
-
-      return [...currentIds, eventId];
-    });
-  };
+  const [savedPlaceIds, setSavedPlaceIds] = useState([]);
 
   const toggleSavedPlace = (placeId) => {
     setSavedPlaceIds((currentIds) => {
-      const isSaved =
-        currentIds.includes(placeId);
+      const isSaved = currentIds.includes(placeId);
 
       if (isSaved) {
-        return currentIds.filter(
-          (id) => id !== placeId,
-        );
+        return currentIds.filter((id) => id !== placeId);
       }
 
       return [...currentIds, placeId];
     });
   };
 
+  // whichever tab is up drives both the header count and the cards below
+  const visibleItems = useMemo(
+    () => (selectedTab === "events" ? events : anytimeImpacts),
+    [selectedTab, events, anytimeImpacts],
+  );
+
   const sheetRef = useRef(null);
 
-  const snapPoints = useMemo(
-    () => [100 + HANDLE_HEIGHT, "50%", "90%"],
-    [],
-  );
+  const snapPoints = useMemo(() => [100 + HANDLE_HEIGHT, "50%", "90%"], []);
 
   const handleClosePress = useCallback(() => {
     sheetRef.current?.close();
@@ -135,15 +110,9 @@ export default function EventList({
       <View style={styles.drawer}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.impactLabel}>
-              Impact
-            </Text>
+            <Text style={styles.impactLabel}>Impact</Text>
 
-            <Text style={styles.impactCount}>
-              {selectedTab === "events"
-                ? anytimeEvents.length
-                : scheduledEvents.length}
-            </Text>
+            <Text style={styles.impactCount}>{visibleItems.length}</Text>
           </View>
 
           <Pressable
@@ -151,93 +120,83 @@ export default function EventList({
             onPress={handleClosePress}
             hitSlop={10}
           >
-            <Text style={styles.closeButtonText}>
-              ✕
-            </Text>
+            <Text style={styles.closeButtonText}>✕</Text>
           </Pressable>
         </View>
 
         <View style={styles.tabRow}>
           <Pressable
             style={styles.tabButton}
-            onPress={() =>
-              setSelectedTab("events")
-            }
+            onPress={() => setSelectedTab("events")}
           >
             <Text
               style={[
                 styles.tabText,
-                selectedTab === "events" &&
-                  styles.activeTabText,
+                selectedTab === "events" && styles.activeTabText,
               ]}
             >
               Events
             </Text>
 
             {selectedTab === "events" && (
-              <View
-                style={styles.activeTabIndicator}
-              />
+              <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
 
           <Pressable
             style={styles.tabButton}
-            onPress={() =>
-              setSelectedTab("anytime")
-            }
+            onPress={() => setSelectedTab("anytime")}
           >
             <Text
               style={[
                 styles.tabText,
-                selectedTab === "anytime" &&
-                  styles.activeTabText,
+                selectedTab === "anytime" && styles.activeTabText,
               ]}
             >
               Anytime
             </Text>
 
             {selectedTab === "anytime" && (
-              <View
-                style={styles.activeTabIndicator}
-              />
+              <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
         </View>
 
         <BottomSheetScrollView
-          contentContainerStyle={
-            styles.cardContainer
-          }
+          contentContainerStyle={styles.cardContainer}
           showsVerticalScrollIndicator={false}
         >
-
           {/* Start here */}
-          {selectedTab === "events"
-  ? anytimeEvents.map((event) => (
-      <EventCard
-        key={event.id}
-        event={event}
-        actionType="rsvp"
-        selected={rsvpEventIds.includes(event.id)}
-        onActionPress={() =>
-          toggleRsvp(event.id)
-        }
-        onPress={() => onSelectEvent?.(event)}
-      />
-    ))
-  : scheduledEvents.map((event) => (
-      <EventCard
-        key={event.id}
-        event={event}
-        actionType="bookmark"
-        selected={savedPlaceIds.includes(event.id)}
-        onActionPress={() =>
-          toggleSavedPlace(event.id)
-        }
-        onPress={() => onSelectEvent?.(event)}
-      />
-    ))}
+          {loading && visibleItems.length === 0 ? (
+            <ActivityIndicator style={styles.loader} color="#8A8A8A" />
+          ) : visibleItems.length === 0 ? (
+            <Text style={styles.emptyText}>
+              {selectedTab === "events"
+                ? "No upcoming events yet."
+                : "No drop-in places yet."}
+            </Text>
+          ) : (
+            visibleItems.map((item) => (
+              <EventCard
+                key={item.id}
+                event={item}
+                userLocation={userLocation}
+                actionType={item.kind === "event" ? "rsvp" : "bookmark"}
+                selected={
+                  item.kind === "event"
+                    ? rsvpEventIds.includes(item.rawId)
+                    : savedPlaceIds.includes(item.id)
+                }
+                onActionPress={() =>
+                  item.kind === "event"
+                    ? onToggleRsvp?.(item)
+                    : toggleSavedPlace(item.id)
+                }
+                onDirectionsPress={() => onDirections?.(item)}
+                onPress={() => onSelectEvent?.(item)}
+              />
+            ))
+          )}
         </BottomSheetScrollView>
       </View>
     </BottomSheet>
@@ -355,5 +314,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 50,
+  },
+
+  loader: {
+    marginTop: 28,
+  },
+
+  emptyText: {
+    marginTop: 28,
+    textAlign: "center",
+    fontSize: 15,
+    color: "#8A8A8A",
   },
 });

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import MapView from "react-native-maps";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import MapView, { Marker } from "react-native-maps";
 import {
   StyleSheet,
   View,
@@ -7,6 +7,8 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
+  Linking,
+  Platform,
 } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,42 +23,8 @@ import { Ionicons } from "@expo/vector-icons";
 import EventPageTab from "../components/EventPageTab";
 import MapPillBar from "../components/MapPillBar";
 
-// Stands in for the events query until the list pulls from supabase
-const SAMPLE_EVENTS = [
-  {
-    id: 1,
-    name: "Beach Cleanup & Coastal Care Day",
-    description:
-      "Join fellow volunteers for a morning of cleaning up the shoreline. Gloves, bags, and grabbers are provided — just bring water, sunscreen, and closed-toe shoes. We'll wrap up with a short debrief on what we collected and where it came from.",
-    location: "Santa Monica Beach, Santa Monica, CA",
-    start_datetime: "2026-09-12T16:00:00+00:00",
-    end_datetime: "2026-09-12T19:00:00+00:00",
-    organization: 1,
-    image: null,
-  },
-  {
-    id: 2,
-    name: "Urban Garden & Composting Workshop",
-    description:
-      "Hands-on session covering composting basics, soil health, and what to do with kitchen scraps in a small apartment.",
-    location: "Griffith Park Community Garden, Los Angeles, CA",
-    start_datetime: "2026-09-19T17:00:00+00:00",
-    end_datetime: "2026-09-19T19:00:00+00:00",
-    organization: 1,
-    image: null,
-  },
-  {
-    id: 3,
-    name: "Zero Waste Swap Meet",
-    description:
-      "A community clothing and household goods swap. Bring what you no longer use, take home something someone else loved.",
-    location: "Echo Park, Los Angeles, CA",
-    start_datetime: "2026-09-26T18:00:00+00:00",
-    end_datetime: "2026-09-26T21:00:00+00:00",
-    organization: 2,
-    image: null,
-  },
-];
+// Both tables load here so the map pins and the list share one dataset
+import { fetchImpactFeed, rsvpToEvent, cancelRsvp } from "../lib/eventsAPI";
 
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
@@ -82,6 +50,14 @@ export default function MapScreen({ navigation }) {
 
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  // supabase rows - scheduled events and drop-in places kept separate so the list can tab between them without refiltering
+  const [events, setEvents] = useState([]);
+  const [anytimeImpacts, setAnytimeImpacts] = useState([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+
+  // rsvp ids live up here so the card and the event page can't disagree
+  const [rsvpEventIds, setRsvpEventIds] = useState([]);
 
   // Parent owns which event is showing; the sheet owns its own position
   const eventTabRef = useRef(null);
@@ -114,6 +90,29 @@ export default function MapScreen({ navigation }) {
         longitudeDelta: 0.0421,
       });
     })();
+  }, []);
+
+  // one fetch - both tabs and every pin come out of this
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { events: eventRows, anytime } = await fetchImpactFeed();
+        if (cancelled) return;
+
+        setEvents(eventRows);
+        setAnytimeImpacts(anytime);
+      } catch (error) {
+        console.log("Impact feed failed to load", error.message);
+      } finally {
+        if (!cancelled) setFeedLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const openEvent = (event, { fromList = false } = {}) => {
@@ -149,6 +148,63 @@ export default function MapScreen({ navigation }) {
     setListVisible(true);
   };
 
+  // rsvp straight from a card - the page writes through onRsvpChange instead
+  const handleToggleRsvp = useCallback(
+    async (item) => {
+      const hasRsvp = rsvpEventIds.includes(item.rawId);
+
+      setRsvpEventIds((currentIds) =>
+        hasRsvp
+          ? currentIds.filter((id) => id !== item.rawId)
+          : [...currentIds, item.rawId],
+      );
+
+      try {
+        if (hasRsvp) {
+          await cancelRsvp(item.rawId);
+        } else {
+          await rsvpToEvent(item.rawId);
+        }
+      } catch (error) {
+        console.log("RSVP failed", error.message);
+
+        // put the id back the way it was
+        setRsvpEventIds((currentIds) =>
+          hasRsvp
+            ? [...currentIds, item.rawId]
+            : currentIds.filter((id) => id !== item.rawId),
+        );
+      }
+    },
+    [rsvpEventIds],
+  );
+
+  // keeps the card in sync when the rsvp happened on the event page
+  const handleRsvpChange = useCallback((item, status) => {
+    setRsvpEventIds((currentIds) =>
+      status
+        ? [...new Set([...currentIds, item.rawId])]
+        : currentIds.filter((id) => id !== item.rawId),
+    );
+  }, []);
+
+  const handleDirections = useCallback((item) => {
+    if (item.latitude == null || item.longitude == null) return;
+
+    const label = encodeURIComponent(item.name ?? "");
+    const url = Platform.select({
+      ios: `maps://?daddr=${item.latitude},${item.longitude}&q=${label}`,
+      android: `geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}(${label})`,
+    });
+
+    Linking.openURL(url).catch(() =>
+      console.log("Could not open directions for", item.id),
+    );
+  }, []);
+
+  console.log("URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
+  console.log("KEY:", process.env.EXPO_PUBLIC_SUPABASE_KEY?.slice(0, 12));
+  console.log("KEY:", process.env.EXPO_PUBLIC_SUPABASE_KEY?.length);
   return (
     <View style={[styles.container, { marginBottom: tabBarHeight }]}>
       <MapView
@@ -156,7 +212,23 @@ export default function MapScreen({ navigation }) {
         region={currentRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
-      />
+      >
+        {/* pins come from the same rows the list renders */}
+        {[...events, ...anytimeImpacts]
+          .filter((item) => item.latitude != null && item.longitude != null)
+          .map((item) => (
+            <Marker
+              key={item.id}
+              coordinate={{
+                latitude: item.latitude,
+                longitude: item.longitude,
+              }}
+              title={item.name}
+              description={item.location ?? undefined}
+              onCalloutPress={() => openEvent(item)}
+            />
+          ))}
+      </MapView>
 
       {/* pills hide while off the map, or while either modal is open */}
       <MapPillBar
@@ -184,7 +256,13 @@ export default function MapScreen({ navigation }) {
         // Here I will pass the state variable to the PartyDrawer component
         visible={listVisible}
         // renders list - comes from supabase later
-        events={SAMPLE_EVENTS}
+        events={events}
+        anytimeImpacts={anytimeImpacts}
+        loading={feedLoading}
+        userLocation={location}
+        rsvpEventIds={rsvpEventIds}
+        onToggleRsvp={handleToggleRsvp}
+        onDirections={handleDirections}
         // Tapping a card sends the whole event row back up here
         onSelectEvent={handleSelectEvent}
         //Here I am using the default function onClose() to pass false towards the component
@@ -195,12 +273,11 @@ export default function MapScreen({ navigation }) {
       <EventPageTab
         ref={eventTabRef}
         event={selectedEvent}
+        userLocation={location}
+        onRsvpChange={handleRsvpChange}
         onClose={handleEventClosed}
       />
     </View>
-
-
-
   );
 }
 
