@@ -96,26 +96,29 @@ const impactCount = visibleEvents.length;
 
 
 
-//Here I implemented a function that will toggle the saved events
-//Take in event obct and eventType, so events, dropIn, Saved
+// Toggle a full event object in savedEvents.
+// eventType keeps separate Supabase tables from colliding if they share an id.
  const toggleSavedEvent = (event, eventType) => {
 
   setSavedEvents((currentEvents) => {
 
-    //Look through the Saved event array, if event in array then already saved
+    // Check whether this exact event is already saved.
     const isSaved = currentEvents.some(
 
       //.some() will return true if one of the elements matches
       //else false
-      (savedEvent) => savedEvent.id === event.id
+      (savedEvent) =>
+        savedEvent.id === event.id &&
+        savedEvent.eventType === eventType
     );
 
     //If true this line will run - >  the event is already saved, remove it from the array
     if (isSaved) {
       return currentEvents.filter(
         (savedEvent) =>
-          //Keep every saved event except the one with the same id that is being liked
-          savedEvent.id !== event.id
+          // Keep every saved event except the one the user just unliked.
+          savedEvent.id !== event.id ||
+          savedEvent.eventType !== eventType
       );
     }
     //else if false the event is not saved
@@ -304,7 +307,8 @@ const impactCount = visibleEvents.length;
                   : "events");
               const isSaved = savedEvents.some(
                 (savedEvent) =>
-                  savedEvent.id === event.id,
+                  savedEvent.id === event.id &&
+                  savedEvent.eventType === eventType,
               );
 
               return (
