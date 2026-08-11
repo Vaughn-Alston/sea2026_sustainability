@@ -12,6 +12,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
 
+const NOTIF_ICON = require("../../assets/camera-icons/notif.png");
+const FRIEND_ICON = require("../../assets/camera-icons/friend.png");
+const FLIP_ICON = require("../../assets/camera-icons/flip.png");
+const FLASH_ICON = require("../../assets/camera-icons/flash.png");
+const MUSIC_ICON = require("../../assets/camera-icons/music.png");
+const RECORD_ICON = require("../../assets/camera-icons/record.png");
+const HD_ICON = require("../../assets/camera-icons/hd.png");
+const ARROW_ICON = require("../../assets/camera-icons/arrow.png");
+
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
@@ -90,12 +99,37 @@ export default function CameraScreen({ navigation }) {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
       <SafeAreaView style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.flipButton}
-          onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
-        >
-          <Ionicons name="sync-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.topIconsRow}>
+          <TouchableOpacity>
+            <Image source={NOTIF_ICON} style={styles.notifIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Image source={FRIEND_ICON} style={styles.friendIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
+          >
+            <Image source={FLIP_ICON} style={styles.topIcon} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.rightRail}>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={FLASH_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={MUSIC_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={RECORD_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={HD_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={ARROW_ICON} style={styles.arrowIcon} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.captureArea}>
           <TouchableOpacity
@@ -141,10 +175,44 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
   },
-  flipButton: {
-    alignSelf: "flex-end",
-    marginTop: 14,
-    marginRight: 18,
+  topIconsRow: {
+    position: "absolute",
+    top: 66,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 18,
+  },
+  topIcon: {
+    width: 26,
+    height: 26,
+  },
+  notifIcon: {
+    width: 26,
+    height: 26,
+    transform: [{ translateX: -4 }],
+  },
+  friendIcon: {
+    width: 45,
+    height: 45,
+    transform: [{ translateY: -9 }, { translateX: 6 }],
+  },
+  rightRail: {
+    position: "absolute",
+    top: 125,
+    right: 12,
+    alignItems: "center",
+  },
+  railButton: {
+    marginBottom: 26,
+  },
+  railIcon: {
+    width: 26,
+    height: 26,
+  },
+  arrowIcon: {
+    width: 32,
+    height: 32,
   },
   captureArea: {
     position: "absolute",
