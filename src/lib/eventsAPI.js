@@ -13,6 +13,10 @@ import { isPastEvent } from "../../utils/datetimeUtil";
 
 // one normalizer for both — scheduled rows carry start/end, drop-ins carry hours
 function normalizeEvent(row) {
+  const attendeesData = row.attending
+    ?.filter((a) => a.users != null)
+    ?.map((a) => a.users) ?? [];
+
   return {
     kind: row.type === "anytime" ? "anytime" : "event",
     type: row.type,
@@ -33,9 +37,10 @@ function normalizeEvent(row) {
     organization: row.organization,
     organizationName: row.organizations?.name ?? null,
     organizationPagelink: row.organizations?.pagelink ?? null,
+    attendees: attendeesData,
 
     // supabase returns embedded aggregates as an array of one row
-    attendeeCount: row.attending?.[0]?.count ?? 0,
+    attendeeCount: row.attending?.find((a) => a.count !== undefined)?.count ?? attendeesData.length,
 
     // how many people saved it - number next to heart
     saveCount: row.saved_impacts?.[0]?.count ?? 0,
@@ -48,8 +53,9 @@ function normalizeEvent(row) {
 export async function fetchImpactFeed() {
   const { data, error } = await supabase
     .from("events")
+    // users(id, avatar) to the attending join to pull user avatars for the stack
     .select(
-      "*, organizations(name, pagelink), attending(count), saved_impacts(count)",
+      "*, organizations(name, pagelink), attending(count, users(id, avatar)), saved_impacts(count)",
     )
     .order("start_datetime", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });

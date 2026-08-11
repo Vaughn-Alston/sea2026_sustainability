@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
@@ -12,30 +18,54 @@ import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
  *   for both kinds — `event` rows show a date, `anytime` rows show Open Now.
  *
  *   heart = save, number next to it is how many people saved it
- *   bookmark = rsvp, scheduled rows only since drop-ins can't be rsvp'd
+ *   rsvp lives on the event page now, so the card only carries the heart
  */
 export default function EventCard({
   event,
+  //All events start false then if saved will turn true
   saved = false,
-  rsvped = false,
   userLocation,
   onPress,
+  // Function handles when the heart button is pressed
   onSavePress,
-  onRsvpPress,
-  onDirectionsPress,
 }) {
-  // scheduled rows get a date line, drop-ins get their open state instead
-  const dateTime =
-    event.kind === "event"
-      ? formatEventWhen(event.start_datetime, event.end_datetime)
-      : formatOpenState(event.hours);
+  // This block will control what is being displayed to the card
 
-  const distance = formatDistance(distanceFromUser(userLocation, event));
+  const cardTitle = event?.name;
+  const cardImage = event?.thumbnail;
+
+  // scheduled rows get a date line, drop-ins get their open state instead
+  const cardDateTime =
+    event?.kind === "event"
+      ? formatEventWhen(event?.start_datetime, event?.end_datetime)
+      : formatOpenState(event?.hours);
+
+  // worked out from the row's lat/long against where the user is standing
+  const cardDistance = formatDistance(distanceFromUser(userLocation, event));
 
   // impact category - Water, Food, etc
-  const tag = event.category;
+  const cardTag = event?.category;
 
-  const isEvent = event.kind === "event";
+  // the db only sends a count, so the avatar row stays empty until the query
+  // pulls attendee profiles too
+  const cardAttendees = event?.attendees ?? [];
+
+  const cardAttendeeCount = event?.attendeeCount || cardAttendees.length;
+
+  // This will show the first 3 people that are in the going
+  const visibleAttendees = cardAttendees.slice(0, 3);
+
+  // everyone who saved it, not just this user - comes from the db rather than
+  // local state, so it survives closing the sheet
+  const saveCount = event?.saveCount ?? 0;
+
+  // Runs when the user taps the heart button on this card.
+  const handleHeartPress = (pressEvent) => {
+    // Prevent the full card's onPress from running.
+    pressEvent.stopPropagation?.();
+
+    onSavePress?.();
+  };
 
   return (
     <Pressable
@@ -43,8 +73,15 @@ export default function EventCard({
       onPress={onPress}
     >
       {/* Circular image on the far left */}
-      {event.thumbnail ? (
-        <Image source={{ uri: event.thumbnail }} style={styles.cardMedia} />
+      {cardImage ? (
+        <Image
+          source={
+            typeof cardImage === "string"
+              ? { uri: cardImage }
+              : cardImage
+          }
+          style={styles.cardMedia}
+        />
       ) : (
         <View style={[styles.cardMedia, styles.imagePlaceholder]}>
           <Text style={styles.imagePlaceholderText}>IMG</Text>
@@ -54,28 +91,55 @@ export default function EventCard({
       {/* Main card information */}
       <View style={styles.cardContent}>
         <Text style={styles.title} numberOfLines={1}>
-          {event.name}
+          {cardTitle}
         </Text>
 
-        {!!dateTime && (
+        {!!cardDateTime && (
           <Text style={styles.dateTime} numberOfLines={1}>
-            {dateTime}
+            {cardDateTime}
           </Text>
         )}
 
-        {!!distance && <Text style={styles.distance}>{distance}</Text>}
+        {!!cardDistance && (
+          <Text style={styles.distance}>
+            {cardDistance}
+          </Text>
+        )}
 
-        {!!tag && (
+        {!!cardTag && (
           <View style={styles.tag}>
-            <Text style={styles.tagText}>{tag}</Text>
+            <Text style={styles.tagText}>
+              {cardTag}
+            </Text>
           </View>
         )}
 
-        {event.attendeeCount > 0 && (
-          <View style={styles.attendeeContainer}>
-            <Text style={styles.attendeeText}>{event.attendeeCount} Going</Text>
+        <View style={styles.attendeeContainer}>
+          <View style={styles.avatarGroup}>
+            {visibleAttendees.map((attendee, index) => (
+              <Image
+                key={attendee.id ?? index}
+                source={
+                  typeof (attendee.avatar ?? attendee) === "string"
+                    ? {
+                        uri: attendee.avatar ?? attendee,
+                      }
+                    : attendee.avatar ?? attendee
+                }
+                style={[
+                  styles.attendeeAvatar,
+                  index > 0 && styles.overlappingAvatar,
+                ]}
+              />
+            ))}
           </View>
-        )}
+
+          {cardAttendeeCount > 0 && (
+            <Text style={styles.attendeeText}>
+              {cardAttendeeCount} Going
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Actions on the far right */}
@@ -84,11 +148,7 @@ export default function EventCard({
           * comes from the db rather than local state */}
         <Pressable
           style={styles.heartButton}
-          onPress={(pressEvent) => {
-            // Prevent the full card's onPress from running.
-            pressEvent.stopPropagation?.();
-            onSavePress?.();
-          }}
+          onPress={handleHeartPress}
           hitSlop={8}
         >
           <Ionicons
@@ -97,41 +157,11 @@ export default function EventCard({
             color={saved ? "#E53935" : "#555555"}
           />
 
-          {event.saveCount > 0 && (
+          {saveCount > 0 && (
             <Text style={[styles.likeCount, saved && styles.likedCount]}>
-              {event.saveCount}
+              {saveCount}
             </Text>
           )}
-        </Pressable>
-
-        {/* rsvp only on scheduled rows - db trigger rejects it on drop-ins anyway */}
-        {isEvent && (
-          <Pressable
-            style={[styles.actionButton, rsvped && styles.actionButtonSelected]}
-            onPress={(pressEvent) => {
-              pressEvent.stopPropagation?.();
-              onRsvpPress?.();
-            }}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={rsvped ? "bookmark" : "bookmark-outline"}
-              size={20}
-              color={rsvped ? "#FFFFFF" : "#111111"}
-            />
-          </Pressable>
-        )}
-
-        {/* directions is its own handler (used to share the rsvp one which meant tapping it toggled the rsvp) */}
-        <Pressable
-          style={styles.actionButton}
-          onPress={(pressEvent) => {
-            pressEvent.stopPropagation?.();
-            onDirectionsPress?.();
-          }}
-          hitSlop={8}
-        >
-          <Ionicons name="navigate" size={23} color="#111111" />
         </Pressable>
       </View>
     </Pressable>
@@ -230,7 +260,26 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
+  avatarGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  attendeeAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    backgroundColor: "#EFEFEF",
+  },
+
+  overlappingAvatar: {
+    marginLeft: -10,
+  },
+
   attendeeText: {
+    marginLeft: 7,
     fontSize: 14,
     fontWeight: "600",
     color: "#444444",
@@ -260,18 +309,5 @@ const styles = StyleSheet.create({
 
   likedCount: {
     color: "#E53935",
-  },
-
-  actionButton: {
-    width: 48,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EEF1F3",
-  },
-
-  actionButtonSelected: {
-    backgroundColor: "#111111",
   },
 });

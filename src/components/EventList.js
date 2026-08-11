@@ -59,6 +59,7 @@ export default function EventList({
   const [page, setPage] = useState("planner");
   const [openModal, setOpenModal] = useState(null);
 
+  //// options: "events", "anytime", "saved" default towards events
   const [selectedTab, setSelectedTab] = useState("events");
 
   // whichever tab is up drives both the header count and the cards below
@@ -129,6 +130,9 @@ export default function EventList({
         </View>
 
         <View style={styles.tabRow}>
+          {/* Here will start the start of my table with my categories */}
+
+          {/* Tab 1 */}
           <Pressable
             style={styles.tabButton}
             onPress={() => setSelectedTab("events")}
@@ -146,7 +150,9 @@ export default function EventList({
               <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
+          {/* End of Tab 1 */}
 
+          {/* Tab 2 */}
           <Pressable
             style={styles.tabButton}
             onPress={() => setSelectedTab("anytime")}
@@ -157,15 +163,16 @@ export default function EventList({
                 selectedTab === "anytime" && styles.activeTabText,
               ]}
             >
-              Anytime
+              Drop- IN
             </Text>
 
             {selectedTab === "anytime" && (
               <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
+          {/* End of Tab 2 */}
 
-          {/* Saved tab - reads savedItems */}
+          {/* Tab 3  - This will be the saved events */}
           <Pressable
             style={styles.tabButton}
             onPress={() => setSelectedTab("saved")}
@@ -183,7 +190,11 @@ export default function EventList({
               <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
+          {/* End of Tab 3 */}
+
+          {/* The end of my tables */}
         </View>
+
 
         <BottomSheetScrollView
           contentContainerStyle={styles.cardContainer}
@@ -198,7 +209,7 @@ export default function EventList({
                 ? "No upcoming events yet."
                 : selectedTab === "anytime"
                   ? "No drop-in places yet."
-                  : "Nothing saved yet."}
+                  : "No saved events yet."}
             </Text>
           ) : (
             visibleItems.map((item) => (
@@ -340,9 +351,10 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    marginTop: 28,
+    marginTop: 20,
     textAlign: "center",
-    fontSize: 15,
-    color: "#8A8A8A",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#777777",
   },
 });
