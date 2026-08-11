@@ -38,7 +38,8 @@ export default function EventCard({
 
 //Use distance if it was passed directly. If not, use event.distance
   const cardDistance = distance ?? event?.distance;
-// Use tag if it was passed directly. If not, use:  const cardTag = tag ?? event?.category;
+// Use tag if it was passed directly. If not, use event.category.
+  const cardTag = tag ?? event?.category;
 
 
 
