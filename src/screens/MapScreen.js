@@ -186,6 +186,19 @@ export default function MapScreen({ navigation }) {
     focusOnItem(event);
   };
 
+  // tapping a different pin while a page is already open drops the current one first then raises the new one
+  const handleSelectPin = useCallback(
+    (item) => {
+      if (selectedEvent && selectedEvent.id !== item.id) {
+        setSelectedEvent(null);
+        setTimeout(() => openEvent(item), 220);
+      } else {
+        openEvent(item);
+      }
+    },
+    [selectedEvent],
+  );
+
   const handleSelectEvent = (event) => {
     setListVisible(false);
     openEvent(event, { fromList: true });
@@ -329,9 +342,8 @@ export default function MapScreen({ navigation }) {
                 latitude: item.latitude,
                 longitude: item.longitude,
               }}
-              title={item.name}
-              description={item.location ?? undefined}
-              onCalloutPress={() => openEvent(item)}
+              pinColor="green"
+              onPress={() => handleSelectPin(item)}
             />
           ))}
       </MapView>

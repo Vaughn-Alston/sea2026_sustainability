@@ -163,7 +163,7 @@ export default function EventList({
                 selectedTab === "anytime" && styles.activeTabText,
               ]}
             >
-              Drop- IN
+              Drop-In
             </Text>
 
             {selectedTab === "anytime" && (
