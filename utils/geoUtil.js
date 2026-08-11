@@ -55,3 +55,21 @@ export function distanceFromUser(userLocation, item) {
     item?.longitude,
   );
 }
+
+// rough drive time from straight-line distance - assumes ~40 mph city average
+export function estimateDriveMinutes(userLocation, item) {
+  const miles = distanceFromUser(userLocation, item);
+  if (miles == null) return null;
+  return Math.max(1, Math.round((miles / 40) * 60));
+}
+
+// "18 min" under an hour
+// "11.3 hr" over
+// keeps the pill readable when user is far from the event
+export function formatDriveTime(minutes) {
+  if (minutes == null) return null;
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = minutes / 60;
+  return `${hours.toFixed(1)} hr`;
+}

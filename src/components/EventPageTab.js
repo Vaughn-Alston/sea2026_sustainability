@@ -29,6 +29,8 @@ import {
   distanceFromUser,
   formatDistance,
   formatPlace,
+  estimateDriveMinutes,
+  formatDriveTime,
 } from "../../utils/geoUtil";
 import {
   cancelRsvp,
@@ -151,6 +153,9 @@ const EventPageTab = forwardRef(function EventPageTab(
   const when = isEvent
     ? formatEventWhen(event?.start_datetime, event?.end_datetime)
     : formatAnytimeWhen(event?.hours);
+
+  // estimate driving time to event
+  const driveTime = formatDriveTime(estimateDriveMinutes(userLocation, event));
 
   // "In 2 Hrs · 6.9 miles · Playa del Rey, CA"
   const metaLine = useMemo(() => {
@@ -372,10 +377,9 @@ const EventPageTab = forwardRef(function EventPageTab(
                   styles.buttonNeutral,
                   styles.directionsButton,
                 ]}
-                onPress={handleDirectionsPress}
               >
                 <Ionicons name="car" size={18} color="#111111" />
-                <Text style={styles.buttonLabel}>Go</Text>
+                <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
               </Pressable>
 
               <Pressable
