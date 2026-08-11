@@ -10,6 +10,17 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
+
+const NOTIF_ICON = require("../../assets/camera-icons/notif.png");
+const FRIEND_ICON = require("../../assets/camera-icons/friend.png");
+const FLIP_ICON = require("../../assets/camera-icons/flip.png");
+const FLASH_ICON = require("../../assets/camera-icons/flash.png");
+const MUSIC_ICON = require("../../assets/camera-icons/music.png");
+const RECORD_ICON = require("../../assets/camera-icons/record.png");
+const HD_ICON = require("../../assets/camera-icons/hd.png");
+const ARROW_ICON = require("../../assets/camera-icons/arrow.png");
+
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
@@ -53,6 +64,8 @@ export default function CameraScreen({ navigation }) {
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
 
+          <Image source={CLEANUP_STAMP} style={styles.cleanupStamp} resizeMode="contain" />
+
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.darkActionButton}
@@ -86,12 +99,37 @@ export default function CameraScreen({ navigation }) {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
       <SafeAreaView style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.flipButton}
-          onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
-        >
-          <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.topIconsRow}>
+          <TouchableOpacity>
+            <Image source={NOTIF_ICON} style={styles.notifIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Image source={FRIEND_ICON} style={styles.friendIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
+          >
+            <Image source={FLIP_ICON} style={styles.topIcon} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.rightRail}>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={FLASH_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={MUSIC_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={RECORD_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={HD_ICON} style={styles.railIcon} resizeMode="contain" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.railButton}>
+            <Image source={ARROW_ICON} style={styles.arrowIcon} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.captureArea}>
           <TouchableOpacity
@@ -137,14 +175,44 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
   },
-  flipButton: {
-    alignSelf: "flex-end",
-    marginTop: 12,
-    marginRight: 18,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  topIconsRow: {
+    position: "absolute",
+    top: 66,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 18,
+  },
+  topIcon: {
+    width: 26,
+    height: 26,
+  },
+  notifIcon: {
+    width: 26,
+    height: 26,
+    transform: [{ translateX: -4 }],
+  },
+  friendIcon: {
+    width: 45,
+    height: 45,
+    transform: [{ translateY: -9 }, { translateX: 6 }],
+  },
+  rightRail: {
+    position: "absolute",
+    top: 125,
+    right: 12,
+    alignItems: "center",
+  },
+  railButton: {
+    marginBottom: 26,
+  },
+  railIcon: {
+    width: 26,
+    height: 26,
+  },
+  arrowIcon: {
+    width: 32,
+    height: 32,
   },
   captureArea: {
     position: "absolute",
@@ -180,6 +248,14 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  cleanupStamp: {
+    position: "absolute",
+    top: 160,
+    left: 24,
+    width: 190,
+    height: 152,
+    transform: [{ rotate: "-15deg" }],
   },
   previewActions: {
     position: "absolute",

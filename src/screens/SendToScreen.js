@@ -14,13 +14,14 @@ const SELECTION_BLUE = "#0A84FF";
 
 const TABS = ["All", "My AI", "Groups", "Contacts", "New"];
 
+const SPOTLIGHT = {
+  id: "spotlight",
+  title: "Spotlight",
+  subtitle: "Reach millions of Snapchatters!",
+  shape: "square",
+};
+
 const STORIES = [
-  {
-    id: "spotlight",
-    title: "Spotlight",
-    subtitle: "Reach millions of Snapchatters!",
-    shape: "square",
-  },
   {
     id: "story-friends",
     title: "My Story · Friends Only",
@@ -34,14 +35,14 @@ const STORIES = [
 ];
 
 const BEST_FRIENDS = [
-  { id: "bf1", name: "Jordan Lee", emoji: "😎😊" },
-  { id: "bf2", name: "Mom", emoji: "🔥😅😊" },
-  { id: "bf3", name: "Alex Chen", emoji: "😊" },
+  { id: "bf1", name: "Jordan Lee" },
+  { id: "bf2", name: "Mom" },
+  { id: "bf3", name: "Alex Chen" },
 ];
 
 const TOP_GROUPS = [
-  { id: "g1", name: "Beach Cleanup Crew", members: "Jordan Lee, Mom", emoji: "🔥✌️" },
-  { id: "g2", name: "Compost Club", members: "Riley Park, Sam Ortiz", emoji: "✌️" },
+  { id: "g1", name: "Beach Cleanup Crew", members: "Jordan Lee, Mom" },
+  { id: "g2", name: "Compost Club", members: "Riley Park, Sam Ortiz" },
 ];
 
 const RECENTS = [
@@ -49,19 +50,18 @@ const RECENTS = [
     id: "r1",
     name: "Sustainability Squad 2026",
     members: "Nick, Jonathan, Hannah, +5",
-    emoji: "🌱💬✏️🔍",
     type: "group",
   },
   {
     id: "r2",
     name: "Beach Cleanup Crew",
     members: "Jordan Lee, Mom",
-    emoji: "🔥✌️",
     type: "group",
   },
 ];
 
 const SELECTABLE_NAMES = [
+  { id: SPOTLIGHT.id, name: SPOTLIGHT.title },
   ...STORIES.map((s) => ({ id: s.id, name: s.title })),
   { id: "story-custom", name: "Custom Story" },
   { id: "my-ai", name: "My AI" },
@@ -84,7 +84,7 @@ function PlaceholderAvatar({ shape = "circle", style }) {
   );
 }
 
-function Row({ title, subtitle, emoji, shape, stacked, selected, onPress }) {
+function Row({ title, subtitle, shape, stacked, selected, onPress }) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       {stacked ? (
@@ -108,7 +108,6 @@ function Row({ title, subtitle, emoji, shape, stacked, selected, onPress }) {
           </Text>
         ) : null}
       </View>
-      {emoji ? <Text style={styles.rowEmoji}>{emoji}</Text> : null}
       <View style={[styles.radio, selected && styles.radioSelected]}>
         {selected && <Ionicons name="checkmark" size={14} color="#fff" />}
       </View>
@@ -153,6 +152,8 @@ export default function SendToScreen({ navigation }) {
     () => (normalizedQuery ? STORIES.filter((s) => matches(s.title)) : STORIES),
     [normalizedQuery],
   );
+
+  const showSpotlight = !normalizedQuery || matches(SPOTLIGHT.title);
 
   const filteredBestFriends = useMemo(() => {
     if (activeTab !== "All" && activeTab !== "Contacts") return [];
@@ -207,12 +208,7 @@ export default function SendToScreen({ navigation }) {
       </View>
 
       <View style={styles.card}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabsRow}
-          contentContainerStyle={styles.tabsRowContent}
-        >
+        <View style={styles.tabsRow}>
           {TABS.map((tab) => {
             const isNew = tab === "New";
             const isActive = tab === activeTab;
@@ -236,14 +232,14 @@ export default function SendToScreen({ navigation }) {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
 
         <ScrollView
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         >
-          {showStories && filteredStories.length > 0 && (
+          {showStories && (showSpotlight || filteredStories.length > 0) && (
             <>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionHeader}>Post to...</Text>
@@ -251,6 +247,17 @@ export default function SendToScreen({ navigation }) {
                   <Text style={styles.newStoryText}>New Story</Text>
                 </TouchableOpacity>
               </View>
+              {showSpotlight && (
+                <View style={[styles.sectionCard, styles.spotlightCard]}>
+                  <Row
+                    title={SPOTLIGHT.title}
+                    subtitle={SPOTLIGHT.subtitle}
+                    shape={SPOTLIGHT.shape}
+                    selected={selected.has(SPOTLIGHT.id)}
+                    onPress={() => toggleSelect(SPOTLIGHT.id)}
+                  />
+                </View>
+              )}
               <View style={styles.sectionCard}>
                 {filteredStories.map((story) => (
                   <Row
@@ -308,7 +315,6 @@ export default function SendToScreen({ navigation }) {
                   <Row
                     key={friend.id}
                     title={friend.name}
-                    emoji={friend.emoji}
                     shape="circle"
                     selected={selected.has(friend.id)}
                     onPress={() => toggleSelect(friend.id)}
@@ -332,7 +338,6 @@ export default function SendToScreen({ navigation }) {
                     key={group.id}
                     title={group.name}
                     subtitle={group.members}
-                    emoji={group.emoji}
                     stacked
                     selected={selected.has(group.id)}
                     onPress={() => toggleSelect(group.id)}
@@ -353,7 +358,6 @@ export default function SendToScreen({ navigation }) {
                     key={item.id}
                     title={item.name}
                     subtitle={item.members}
-                    emoji={item.emoji}
                     stacked={item.type === "group"}
                     selected={selected.has(item.id)}
                     onPress={() => toggleSelect(item.id)}
@@ -414,27 +418,25 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   tabsRow: {
-    flexGrow: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 14,
-  },
-  tabsRowContent: {
     paddingHorizontal: 16,
-    gap: 8,
   },
   tabPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    height: 34,
-    borderRadius: 17,
+    gap: 4,
+    paddingHorizontal: 10,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "#F3F3F5",
   },
   tabPillActive: {
     backgroundColor: "#CFE9FB",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 12.5,
     fontWeight: "600",
     color: "#3a3a3c",
   },
@@ -442,9 +444,9 @@ const styles = StyleSheet.create({
     color: "#111",
   },
   aiAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#7C6CF0",
     alignItems: "center",
     justifyContent: "center",
@@ -492,6 +494,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 18,
     overflow: "hidden",
+  },
+  spotlightCard: {
+    marginBottom: 8,
   },
   row: {
     flexDirection: "row",
@@ -548,9 +553,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8a8a8e",
     marginTop: 2,
-  },
-  rowEmoji: {
-    fontSize: 13,
   },
   radio: {
     width: 22,
