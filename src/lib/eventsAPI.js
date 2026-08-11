@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isPastEvent } from "../../utils/datetimeUtil";
 
 /**
  * eventsApi
@@ -10,21 +11,12 @@ import { supabase } from "./supabase";
  *   Everything gets normalized here so no component has to guess what kind of row it got — they read `kind` instead.
  */
 
-// the display id is prefixed so it's obvious which kind a row is at a glance,
-// while `rawId` keeps the real value for RPC calls
-function makeKey(kind, id) {
-  return `${kind}-${id}`;
-}
-
 // one normalizer for both — scheduled rows carry start/end, drop-ins carry hours
 function normalizeEvent(row) {
-  const kind = row.type === "anytime" ? "anytime" : "event";
-
   return {
-    kind,
+    kind: row.type === "anytime" ? "anytime" : "event",
     type: row.type,
-    id: makeKey(kind, row.id),
-    rawId: row.id,
+    id: row.id,
     name: row.name,
     description: row.description,
     location: row.location,
@@ -44,16 +36,21 @@ function normalizeEvent(row) {
 
     // supabase returns embedded aggregates as an array of one row
     attendeeCount: row.attending?.[0]?.count ?? 0,
+
+    // how many people saved it - number next to heart
+    saveCount: row.saved_impacts?.[0]?.count ?? 0,
   };
 }
 
 // organizations is joined in so the page can show "Hosted by" without having to pull from db again
-// attending(count) gives the "24 going" number
+// attending(count) gives the "24 going" number, saved_impacts(count) the heart number
 // one query covers both tabs — the map needs every pin regardless of which tab happens to be selected
 export async function fetchImpactFeed() {
   const { data, error } = await supabase
     .from("events")
-    .select("*, organizations(name, pagelink), attending(count)")
+    .select(
+      "*, organizations(name, pagelink), attending(count), saved_impacts(count)",
+    )
     .order("start_datetime", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
 
@@ -62,7 +59,15 @@ export async function fetchImpactFeed() {
   const rows = (data ?? []).map(normalizeEvent);
 
   return {
-    events: rows.filter((row) => row.type === "scheduled"),
+    // finished events drop out of the list and off the map
+    // isPastEvent measures from end_datetime, so an event mid-session still counts as live
+    events: rows.filter(
+      (row) =>
+        row.type === "scheduled" &&
+        !isPastEvent(row.start_datetime, row.end_datetime),
+    ),
+
+    // drop-ins are always current, open and close on their hours instead
     anytime: rows.filter((row) => row.type === "anytime"),
   };
 }
@@ -73,7 +78,7 @@ export async function fetchImpactFeed() {
  *   directly, so the acting user is taken from auth.uid() server-side and the
  *   client never passes (or spoofs) a user id.
  *
- *   rsvps are scheduled only — trigger rejects drop-ins, so the UI shouldn't offer the button on those
+ *   rsvps are scheduled-only — trigger rejects drop-ins
  */
 export async function rsvpToEvent(eventId, status = "going") {
   const { data, error } = await supabase.rpc("rsvp_to_event", {
@@ -107,6 +112,24 @@ export async function fetchMyRsvp(eventId) {
 
   if (error) throw error;
   return data?.status ?? null;
+}
+
+// every event the user has rsvp'd to
+// list can fill in the RSVP'D labels on first load
+export async function fetchMyRsvpEventIds() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("attending")
+    .select("event")
+    .eq("user", user.id);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => row.event);
 }
 
 // "24 going · 4 friends attending" — friends comes from the friends table
@@ -147,8 +170,7 @@ export async function fetchAttendanceSummary(eventId) {
 
 /**
  * Saved places
- *   Same as RSVP helpers above
- *   take the user from auth.uid() 
+ *   Same as RSVP helpers above take the user from auth.uid()
  *   toggle handles both directions in one call and returns the state it landed on
  *      caller doesn't have to know whether it was saved beforehand
  *
@@ -175,5 +197,7 @@ export async function fetchMySavedImpactIds() {
   const { data, error } = await supabase.rpc("my_saved_impact_ids");
   if (error) throw error;
 
-  return (data ?? []).map((row) => (typeof row === "object" ? row.impact : row));
+  return (data ?? []).map((row) =>
+    typeof row === "object" ? row.impact : row,
+  );
 }

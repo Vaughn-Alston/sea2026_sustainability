@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import MapView, { Marker } from "react-native-maps";
 import {
   StyleSheet,
@@ -24,7 +30,14 @@ import EventPageTab from "../components/EventPageTab";
 import MapPillBar from "../components/MapPillBar";
 
 // Both tables load here so the map pins and the list share one dataset
-import { fetchImpactFeed, rsvpToEvent, cancelRsvp } from "../lib/eventsAPI";
+import {
+  fetchImpactFeed,
+  fetchMyRsvpEventIds,
+  fetchMySavedImpactIds,
+  rsvpToEvent,
+  cancelRsvp,
+  toggleSavedImpact,
+} from "../lib/eventsAPI";
 
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
@@ -59,11 +72,15 @@ export default function MapScreen({ navigation }) {
   // rsvp ids live up here so the card and the event page can't disagree
   const [rsvpEventIds, setRsvpEventIds] = useState([]);
 
+  // saved ids too - persist so the list can't own them either
+  const [savedPlaceIds, setSavedPlaceIds] = useState([]);
+
   // Parent owns which event is showing; the sheet owns its own position
   const eventTabRef = useRef(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  // map ref - the map is uncontrolled now, so recentering goes through here instead of through currentRegion
+  // map ref - the map is uncontrolled now, so recentering goes through here
+  // instead of through currentRegion
   const mapRef = useRef(null);
 
   // Only send the list back up if that's where the event came from
@@ -93,7 +110,8 @@ export default function MapScreen({ navigation }) {
         longitudeDelta: 0.0421,
       });
 
-      // initialRegion only lands on first render, so the jump to the user has to be animated in
+      // initialRegion only lands on first render, so the jump to the user
+      // has to be animated in
       mapRef.current?.animateToRegion({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -109,11 +127,19 @@ export default function MapScreen({ navigation }) {
 
     (async () => {
       try {
-        const { events: eventRows, anytime } = await fetchImpactFeed();
+        const [{ events: eventRows, anytime }, rsvpIds, savedIds] =
+          await Promise.all([
+            fetchImpactFeed(),
+            fetchMyRsvpEventIds(),
+            fetchMySavedImpactIds(),
+          ]);
+
         if (cancelled) return;
 
         setEvents(eventRows);
         setAnytimeImpacts(anytime);
+        setRsvpEventIds(rsvpIds);
+        setSavedPlaceIds(savedIds);
       } catch (error) {
         console.log("Impact feed failed to load", error.message);
       } finally {
@@ -126,7 +152,18 @@ export default function MapScreen({ navigation }) {
     };
   }, []);
 
-  // drops the pin in the visible part of the map - the sheet covers the bottom half, so the center is moved south to sit above it
+  // everything the user has bookmarked, either kind - this is what the Saved
+  // tab renders
+  const savedItems = useMemo(
+    () =>
+      [...events, ...anytimeImpacts].filter((item) =>
+        savedPlaceIds.includes(item.id),
+      ),
+    [events, anytimeImpacts, savedPlaceIds],
+  );
+
+  // drops the pin in the visible part of the map - the sheet covers the
+  // bottom half, so the center is nudged south to sit above it
   const focusOnItem = useCallback((item) => {
     if (!item || item.latitude == null || item.longitude == null) return;
 
@@ -145,7 +182,7 @@ export default function MapScreen({ navigation }) {
     setReturnToList(fromList);
     setSelectedEvent(event);
 
-    // recenter whether the row came from the list or from a pin press
+    // recenter whether the row came from the list or from a pin callout
     focusOnItem(event);
   };
 
@@ -180,19 +217,19 @@ export default function MapScreen({ navigation }) {
   // rsvp straight from a card - the page writes through onRsvpChange instead
   const handleToggleRsvp = useCallback(
     async (item) => {
-      const hasRsvp = rsvpEventIds.includes(item.rawId);
+      const hasRsvp = rsvpEventIds.includes(item.id);
 
       setRsvpEventIds((currentIds) =>
         hasRsvp
-          ? currentIds.filter((id) => id !== item.rawId)
-          : [...currentIds, item.rawId],
+          ? currentIds.filter((id) => id !== item.id)
+          : [...currentIds, item.id],
       );
 
       try {
         if (hasRsvp) {
-          await cancelRsvp(item.rawId);
+          await cancelRsvp(item.id);
         } else {
-          await rsvpToEvent(item.rawId);
+          await rsvpToEvent(item.id);
         }
       } catch (error) {
         console.log("RSVP failed", error.message);
@@ -200,20 +237,62 @@ export default function MapScreen({ navigation }) {
         // put the id back the way it was
         setRsvpEventIds((currentIds) =>
           hasRsvp
-            ? [...currentIds, item.rawId]
-            : currentIds.filter((id) => id !== item.rawId),
+            ? [...currentIds, item.id]
+            : currentIds.filter((id) => id !== item.id),
         );
       }
     },
     [rsvpEventIds],
   );
 
+  // save straight from a card - the toggle returns where it landed so list state follows the db
+  const handleToggleSaved = useCallback(
+    async (item) => {
+      const wasSaved = savedPlaceIds.includes(item.id);
+
+      setSavedPlaceIds((currentIds) =>
+        wasSaved
+          ? currentIds.filter((id) => id !== item.id)
+          : [...currentIds, item.id],
+      );
+
+      try {
+        const nowSaved = await toggleSavedImpact(item.id);
+
+        setSavedPlaceIds((currentIds) =>
+          nowSaved
+            ? [...new Set([...currentIds, item.id])]
+            : currentIds.filter((id) => id !== item.id),
+        );
+      } catch (error) {
+        console.log("Save failed", error.message);
+
+        // put the id back the way it was
+        setSavedPlaceIds((currentIds) =>
+          wasSaved
+            ? [...new Set([...currentIds, item.id])]
+            : currentIds.filter((id) => id !== item.id),
+        );
+      }
+    },
+    [savedPlaceIds],
+  );
+
   // keeps the card in sync when the rsvp happened on the event page
   const handleRsvpChange = useCallback((item, status) => {
     setRsvpEventIds((currentIds) =>
       status
-        ? [...new Set([...currentIds, item.rawId])]
-        : currentIds.filter((id) => id !== item.rawId),
+        ? [...new Set([...currentIds, item.id])]
+        : currentIds.filter((id) => id !== item.id),
+    );
+  }, []);
+
+  // same for a save made on the event page
+  const handleSavedChange = useCallback((item, isSaved) => {
+    setSavedPlaceIds((currentIds) =>
+      isSaved
+        ? [...new Set([...currentIds, item.id])]
+        : currentIds.filter((id) => id !== item.id),
     );
   }, []);
 
@@ -272,7 +351,7 @@ export default function MapScreen({ navigation }) {
               const { latitude, longitude } = location.coords;
               setCurrentRegion({ ...currentRegion, latitude, longitude });
 
-              // animate to pin
+              // animate rather than re-render into place
               mapRef.current?.animateToRegion({
                 latitude,
                 longitude,
@@ -293,10 +372,13 @@ export default function MapScreen({ navigation }) {
         // renders list - comes from supabase later
         events={events}
         anytimeImpacts={anytimeImpacts}
+        savedItems={savedItems}
         loading={feedLoading}
         userLocation={location}
         rsvpEventIds={rsvpEventIds}
+        savedPlaceIds={savedPlaceIds}
         onToggleRsvp={handleToggleRsvp}
+        onToggleSaved={handleToggleSaved}
         onDirections={handleDirections}
         // Tapping a card sends the whole event row back up here
         onSelectEvent={handleSelectEvent}
@@ -310,6 +392,7 @@ export default function MapScreen({ navigation }) {
         event={selectedEvent}
         userLocation={location}
         onRsvpChange={handleRsvpChange}
+        onSavedChange={handleSavedChange}
         onClose={handleEventClosed}
       />
     </View>

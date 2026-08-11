@@ -34,7 +34,9 @@ import {
   cancelRsvp,
   fetchAttendanceSummary,
   fetchMyRsvp,
+  fetchMySavedImpactIds,
   rsvpToEvent,
+  toggleSavedImpact,
 } from "../lib/eventsAPI";
 
 const HANDLE_HEIGHT = 24;
@@ -55,7 +57,7 @@ function SheetHandle() {
  *   index 2 — full screen, scrollable for rest of details
  */
 const EventPageTab = forwardRef(function EventPageTab(
-  { event, userLocation, onClose, onRsvpChange },
+  { event, userLocation, onClose, onRsvpChange, onSavedChange },
   ref,
 ) {
   const sheetRef = useRef(null);
@@ -65,6 +67,9 @@ const EventPageTab = forwardRef(function EventPageTab(
   const [rsvpStatus, setRsvpStatus] = useState(null);
   const [summary, setSummary] = useState({ goingCount: 0, friendCount: 0 });
   const [busy, setBusy] = useState(false);
+
+  // drop-ins can't be rsvp'd, so they track saved state instead
+  const [saved, setSaved] = useState(false);
 
   const snapPoints = useMemo(
     () => [HEADER_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
@@ -96,27 +101,39 @@ const EventPageTab = forwardRef(function EventPageTab(
   }, [event]);
 
   // drop-ins have no attending rows so only scheduled events get counts
+  // load whether they're already saved instead
   useEffect(() => {
     let cancelled = false;
 
-    if (!event || event.kind !== "event") {
+    if (!event) {
       setRsvpStatus(null);
+      setSaved(false);
       setSummary({ goingCount: 0, friendCount: 0 });
       return;
     }
 
     (async () => {
       try {
-        const [status, counts] = await Promise.all([
-          fetchMyRsvp(event.rawId),
-          fetchAttendanceSummary(event.rawId),
-        ]);
+        if (event.kind === "event") {
+          const [status, counts] = await Promise.all([
+            fetchMyRsvp(event.id),
+            fetchAttendanceSummary(event.id),
+          ]);
 
-        if (cancelled) return;
-        setRsvpStatus(status);
-        setSummary(counts);
+          if (cancelled) return;
+          setRsvpStatus(status);
+          setSummary(counts);
+          setSaved(false);
+        } else {
+          const savedIds = await fetchMySavedImpactIds();
+
+          if (cancelled) return;
+          setSaved(savedIds.includes(event.id));
+          setRsvpStatus(null);
+          setSummary({ goingCount: 0, friendCount: 0 });
+        }
       } catch (error) {
-        console.log("Attendance load failed", error.message);
+        console.log("Event state load failed", error.message);
       }
     })();
 
@@ -127,6 +144,9 @@ const EventPageTab = forwardRef(function EventPageTab(
 
   const isEvent = event?.kind === "event";
   const hasRsvp = rsvpStatus != null;
+
+  // whichever value fills in the button for this kind of row
+  const actionActive = isEvent ? hasRsvp : saved;
 
   const when = isEvent
     ? formatEventWhen(event?.start_datetime, event?.end_datetime)
@@ -147,10 +167,32 @@ const EventPageTab = forwardRef(function EventPageTab(
     return parts.filter(Boolean).join(" · ");
   }, [event, isEvent, userLocation]);
 
-  const handleRsvpPress = useCallback(async () => {
-    if (!event || !isEvent || busy) return;
+  // scheduled rows rsvp
+  // drop-ins save
+  // db trigger rejects rsvps on anytime rows so the two paths can't be shared
+  const handleActionPress = useCallback(async () => {
+    if (!event || busy) return;
 
     setBusy(true);
+
+    if (!isEvent) {
+      const previous = saved;
+      setSaved(!previous);
+
+      try {
+        // the toggle returns where it landed so two fast taps can't desync
+        const nowSaved = await toggleSavedImpact(event.id);
+        setSaved(nowSaved);
+        onSavedChange?.(event, nowSaved);
+      } catch (error) {
+        console.log("Save failed", error.message);
+        setSaved(previous);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const next = hasRsvp ? null : "going";
 
     // the counts snap back if the call throws
@@ -162,9 +204,9 @@ const EventPageTab = forwardRef(function EventPageTab(
 
     try {
       if (hasRsvp) {
-        await cancelRsvp(event.rawId);
+        await cancelRsvp(event.id);
       } else {
-        await rsvpToEvent(event.rawId);
+        await rsvpToEvent(event.id);
       }
       onRsvpChange?.(event, next);
     } catch (error) {
@@ -177,7 +219,16 @@ const EventPageTab = forwardRef(function EventPageTab(
     } finally {
       setBusy(false);
     }
-  }, [event, isEvent, busy, hasRsvp, rsvpStatus, onRsvpChange]);
+  }, [
+    event,
+    isEvent,
+    busy,
+    saved,
+    hasRsvp,
+    rsvpStatus,
+    onRsvpChange,
+    onSavedChange,
+  ]);
 
   // lat/long opens a precise pin - the old location string made maps guess
   const handleDirectionsPress = useCallback(() => {
@@ -290,22 +341,28 @@ const EventPageTab = forwardRef(function EventPageTab(
                 style={[
                   styles.button,
                   styles.rsvpButton,
-                  hasRsvp ? styles.buttonSelected : styles.buttonNeutral,
+                  actionActive ? styles.buttonSelected : styles.buttonNeutral,
                 ]}
-                onPress={handleRsvpPress}
+                onPress={handleActionPress}
               >
                 <Ionicons
-                  name={hasRsvp ? "bookmark" : "bookmark-outline"}
+                  name={actionActive ? "bookmark" : "bookmark-outline"}
                   size={18}
-                  color={hasRsvp ? "#FFFFFF" : "#111111"}
+                  color={actionActive ? "#FFFFFF" : "#111111"}
                 />
                 <Text
                   style={[
                     styles.buttonLabel,
-                    hasRsvp && styles.buttonLabelSelected,
+                    actionActive && styles.buttonLabelSelected,
                   ]}
                 >
-                  {isEvent ? (hasRsvp ? "RSVP'D" : "RSVP") : "Save"}
+                  {isEvent
+                    ? hasRsvp
+                      ? "RSVP'D"
+                      : "RSVP"
+                    : saved
+                      ? "Saved"
+                      : "Save"}
                 </Text>
               </Pressable>
 

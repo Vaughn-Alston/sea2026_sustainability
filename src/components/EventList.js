@@ -31,17 +31,27 @@ function SheetHandle() {
   );
 }
 
-// Both tabs render from props - parent owns the supabase fetch
-// map and this sheet share one dataset instead of querying twice
-// events are scheduled, anytimeImpacts the drop-in places
+/**
+ * EventList
+ *   Every tab renders from props - the parent owns the supabase fetch so the
+ *   map and this sheet share one dataset instead of querying twice.
+ *   `events` are the scheduled rows, `anytimeImpacts` the drop-in places, and
+ *   `savedItems` is whatever the user hearted, either kind.
+ *
+ *   rsvp + saved ids are props too
+ *   both persist to the db and the event page agrees with what the cards show.
+ */
 export default function EventList({
   visible,
   events = [],
   anytimeImpacts = [],
+  savedItems = [],
   loading = false,
   userLocation,
   rsvpEventIds = [],
+  savedPlaceIds = [],
   onToggleRsvp,
+  onToggleSaved,
   onClose,
   onSelectEvent,
   onDirections,
@@ -51,25 +61,12 @@ export default function EventList({
 
   const [selectedTab, setSelectedTab] = useState("events");
 
-  const [savedPlaceIds, setSavedPlaceIds] = useState([]);
-
-  const toggleSavedPlace = (placeId) => {
-    setSavedPlaceIds((currentIds) => {
-      const isSaved = currentIds.includes(placeId);
-
-      if (isSaved) {
-        return currentIds.filter((id) => id !== placeId);
-      }
-
-      return [...currentIds, placeId];
-    });
-  };
-
   // whichever tab is up drives both the header count and the cards below
-  const visibleItems = useMemo(
-    () => (selectedTab === "events" ? events : anytimeImpacts),
-    [selectedTab, events, anytimeImpacts],
-  );
+  const visibleItems = useMemo(() => {
+    if (selectedTab === "events") return events;
+    if (selectedTab === "anytime") return anytimeImpacts;
+    return savedItems;
+  }, [selectedTab, events, anytimeImpacts, savedItems]);
 
   const sheetRef = useRef(null);
 
@@ -160,6 +157,25 @@ export default function EventList({
               <View style={styles.activeTabIndicator} />
             )}
           </Pressable>
+
+          {/* Saved tab - reads savedItems */}
+          <Pressable
+            style={styles.tabButton}
+            onPress={() => setSelectedTab("saved")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === "saved" && styles.activeTabText,
+              ]}
+            >
+              Saved
+            </Text>
+
+            {selectedTab === "saved" && (
+              <View style={styles.activeTabIndicator} />
+            )}
+          </Pressable>
         </View>
 
         <BottomSheetScrollView
@@ -173,7 +189,9 @@ export default function EventList({
             <Text style={styles.emptyText}>
               {selectedTab === "events"
                 ? "No upcoming events yet."
-                : "No drop-in places yet."}
+                : selectedTab === "anytime"
+                  ? "No drop-in places yet."
+                  : "Nothing saved yet."}
             </Text>
           ) : (
             visibleItems.map((item) => (
@@ -181,17 +199,11 @@ export default function EventList({
                 key={item.id}
                 event={item}
                 userLocation={userLocation}
-                actionType={item.kind === "event" ? "rsvp" : "bookmark"}
-                selected={
-                  item.kind === "event"
-                    ? rsvpEventIds.includes(item.rawId)
-                    : savedPlaceIds.includes(item.id)
-                }
-                onActionPress={() =>
-                  item.kind === "event"
-                    ? onToggleRsvp?.(item)
-                    : toggleSavedPlace(item.id)
-                }
+                // card decides which controls to show based on the row's kind
+                saved={savedPlaceIds.includes(item.id)}
+                rsvped={rsvpEventIds.includes(item.id)}
+                onSavePress={() => onToggleSaved?.(item)}
+                onRsvpPress={() => onToggleRsvp?.(item)}
                 onDirectionsPress={() => onDirections?.(item)}
                 onPress={() => onSelectEvent?.(item)}
               />

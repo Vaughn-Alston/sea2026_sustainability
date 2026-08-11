@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -7,23 +7,24 @@ import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
 
 /**
  * EventCard
- *   Takes one normalized row from eventsAPI and derives its own display trings, so the list doesn't have to spread a dozen props per card
- *   Works for both kinds — `event` rows show a date, `anytime` rows show Open Now.
+ *   Takes one normalized row (see lib/eventsAPI) and derives its own display
+ *   strings, so the list doesn't have to spread a dozen props per card. Works
+ *   for both kinds — `event` rows show a date, `anytime` rows show Open Now.
+ *
+ *   heart = save, number next to it is how many people saved it
+ *   bookmark = rsvp, scheduled rows only since drop-ins can't be rsvp'd
  */
 export default function EventCard({
   event,
-  actionType = "rsvp",
-  selected = false,
+  saved = false,
+  rsvped = false,
   userLocation,
   onPress,
-  onActionPress,
+  onSavePress,
+  onRsvpPress,
   onDirectionsPress,
-  initialLikes = 7,
 }) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(initialLikes);
-
-  // scheduled rows get a date line, drop-ins get open status instead
+  // scheduled rows get a date line, drop-ins get their open state instead
   const dateTime =
     event.kind === "event"
       ? formatEventWhen(event.start_datetime, event.end_datetime)
@@ -31,19 +32,10 @@ export default function EventCard({
 
   const distance = formatDistance(distanceFromUser(userLocation, event));
 
-  // "Water" / "Food" on drop-ins, org name on scheduled events
+  // impact category - Water, Food, etc
   const tag = event.category;
 
-  const handleHeartPress = (pressEvent) => {
-    // Prevent the full card's onPress from running
-    pressEvent.stopPropagation?.();
-
-    // The user can only increment the count once
-    if (liked) return;
-
-    setLiked(true);
-    setLikeCount((currentCount) => currentCount + 1);
-  };
+  const isEvent = event.kind === "event";
 
   return (
     <Pressable
@@ -88,54 +80,49 @@ export default function EventCard({
 
       {/* Actions on the far right */}
       <View style={styles.cardActions}>
+        {/* heart saves the place - count is everyone who saved it
+          * comes from the db rather than local state */}
         <Pressable
           style={styles.heartButton}
-          onPress={handleHeartPress}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={liked ? "heart" : "heart-outline"}
-            size={27}
-            color={liked ? "#E53935" : "#555555"}
-          />
-
-          <Text style={[styles.likeCount, liked && styles.likedCount]}>
-            {likeCount}
-          </Text>
-        </Pressable>
-
-        {/* Here I will create a rsvp button that will track the user if he clicks it */}
-        <Pressable
-          style={[
-            styles.actionButton,
-            styles.rsvpButton,
-            selected && styles.actionButtonSelected,
-          ]}
           onPress={(pressEvent) => {
+            // Prevent the full card's onPress from running.
             pressEvent.stopPropagation?.();
-            onActionPress?.();
+            onSavePress?.();
           }}
           hitSlop={8}
         >
-          {actionType === "rsvp" ? (
-            <Text
-              style={[
-                styles.actionLabel,
-                selected && styles.actionLabelSelected,
-              ]}
-            >
-              {selected ? "RSVP'D" : "RSVP"}
+          <Ionicons
+            name={saved ? "heart" : "heart-outline"}
+            size={27}
+            color={saved ? "#E53935" : "#555555"}
+          />
+
+          {event.saveCount > 0 && (
+            <Text style={[styles.likeCount, saved && styles.likedCount]}>
+              {event.saveCount}
             </Text>
-          ) : (
-            <Ionicons
-              name={selected ? "bookmark" : "bookmark-outline"}
-              size={20}
-              color={selected ? "#FFFFFF" : "#111111"}
-            />
           )}
         </Pressable>
 
-        {/* directions is its own handler - it used to share onActionPress, which meant tapping it toggled the rsvp */}
+        {/* rsvp only on scheduled rows - db trigger rejects it on drop-ins anyway */}
+        {isEvent && (
+          <Pressable
+            style={[styles.actionButton, rsvped && styles.actionButtonSelected]}
+            onPress={(pressEvent) => {
+              pressEvent.stopPropagation?.();
+              onRsvpPress?.();
+            }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={rsvped ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color={rsvped ? "#FFFFFF" : "#111111"}
+            />
+          </Pressable>
+        )}
+
+        {/* directions is its own handler (used to share the rsvp one which meant tapping it toggled the rsvp) */}
         <Pressable
           style={styles.actionButton}
           onPress={(pressEvent) => {
@@ -243,24 +230,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
-  avatarGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  attendeeAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    backgroundColor: "#EFEFEF",
-  },
-
-  overlappingAvatar: {
-    marginLeft: -10,
-  },
-
   attendeeText: {
     fontSize: 14,
     fontWeight: "600",
@@ -302,21 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF1F3",
   },
 
-  rsvpButton: {
-    width: 62,
-  },
-
   actionButtonSelected: {
     backgroundColor: "#111111",
-  },
-
-  actionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#111111",
-  },
-
-  actionLabelSelected: {
-    color: "#FFFFFF",
   },
 });
