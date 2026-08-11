@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
-  Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -72,11 +71,10 @@ export default function CameraScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sendButton}
-              onPress={() => {}}
+              onPress={() => navigation.navigate("SendTo", { photoUri })}
             >
               <Text style={styles.sendButtonText}>Send To</Text>
               <Ionicons name="send" size={24} color="#111" />
-              <Pressable></Pressable>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
