@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MarkPopUp from "../components/MarkPopUp";
 
 const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
 
@@ -25,6 +26,8 @@ export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
   const [photoUri, setPhotoUri] = useState(null);
+  const [photoTakenAt, setPhotoTakenAt] = useState(null);
+  const [markPopupVisible, setMarkPopupVisible] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
@@ -39,7 +42,10 @@ export default function CameraScreen({ navigation }) {
     if (!cameraRef.current) return;
 
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-    if (photo) setPhotoUri(photo.uri);
+    if (photo) {
+      setPhotoUri(photo.uri);
+      setPhotoTakenAt(new Date());
+    }
   };
 
   if (!permission) return <View style={styles.container} />;
@@ -69,7 +75,7 @@ export default function CameraScreen({ navigation }) {
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.darkActionButton}
-              onPress={() => {}}
+              onPress={() => setMarkPopupVisible(true)}
             >
               <View style={styles.saveSymbol}>
                 <Ionicons name="arrow-down" size={27} color="#fff" />
@@ -84,13 +90,24 @@ export default function CameraScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sendButton}
-              onPress={() => navigation.navigate("SendTo", { photoUri })}
+              onPress={() => navigation.navigate("SendTo", { photoUri, photoTakenAt })}
             >
               <Text style={styles.sendButtonText}>Send To</Text>
               <Ionicons name="send" size={24} color="#111" />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+
+        <MarkPopUp
+          visible={markPopupVisible}
+          date={photoTakenAt || new Date()}
+          photoUri={photoUri}
+          onDone={() => setMarkPopupVisible(false)}
+          onViewImpact={() => {
+            setMarkPopupVisible(false);
+            navigation.navigate("Impact");
+          }}
+        />
       </View>
     );
   }
@@ -184,35 +201,35 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   topIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
   notifIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     transform: [{ translateX: -4 }],
   },
   friendIcon: {
-    width: 45,
-    height: 45,
-    transform: [{ translateY: -9 }, { translateX: 6 }],
+    width: 40,
+    height: 40,
+    transform: [{ translateY: -8 }, { translateX: 5 }],
   },
   rightRail: {
     position: "absolute",
-    top: 125,
-    right: 12,
+    top: 123,
+    right: 14,
     alignItems: "center",
   },
   railButton: {
-    marginBottom: 26,
+    marginBottom: 23,
   },
   railIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
   arrowIcon: {
-    width: 32,
-    height: 32,
+    width: 29,
+    height: 29,
   },
   captureArea: {
     position: "absolute",

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MarkPopUp from "../components/MarkPopUp";
 
 const SELECTION_BLUE = "#0A84FF";
 
@@ -115,13 +116,15 @@ function Row({ title, subtitle, shape, stacked, selected, onPress }) {
   );
 }
 
-export default function SendToScreen({ navigation }) {
+export default function SendToScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
+  const { photoUri, photoTakenAt } = route.params || {};
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [showMoreStories, setShowMoreStories] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [markPopupVisible, setMarkPopupVisible] = useState(false);
 
   const toggleSelect = (id) => {
     setSelected((prev) => {
@@ -180,7 +183,7 @@ export default function SendToScreen({ navigation }) {
   );
 
   const handleSend = () => {
-    navigation.goBack();
+    setMarkPopupVisible(true);
   };
 
   return (
@@ -381,6 +384,20 @@ export default function SendToScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       )}
+
+      <MarkPopUp
+        visible={markPopupVisible}
+        date={photoTakenAt || new Date()}
+        photoUri={photoUri}
+        onDone={() => {
+          setMarkPopupVisible(false);
+          navigation.goBack();
+        }}
+        onViewImpact={() => {
+          setMarkPopupVisible(false);
+          navigation.navigate("Impact");
+        }}
+      />
     </View>
   );
 }
