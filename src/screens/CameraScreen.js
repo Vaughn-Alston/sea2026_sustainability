@@ -10,6 +10,8 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
+
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
@@ -53,6 +55,8 @@ export default function CameraScreen({ navigation }) {
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
 
+          <Image source={CLEANUP_STAMP} style={styles.cleanupStamp} resizeMode="contain" />
+
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.darkActionButton}
@@ -90,7 +94,7 @@ export default function CameraScreen({ navigation }) {
           style={styles.flipButton}
           onPress={() => setFacing((current) => (current === "back" ? "front" : "back"))}
         >
-          <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+          <Ionicons name="sync-outline" size={24} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.captureArea}>
@@ -139,12 +143,8 @@ const styles = StyleSheet.create({
   },
   flipButton: {
     alignSelf: "flex-end",
-    marginTop: 12,
+    marginTop: 14,
     marginRight: 18,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
   captureArea: {
     position: "absolute",
@@ -180,6 +180,14 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  cleanupStamp: {
+    position: "absolute",
+    top: 160,
+    left: 24,
+    width: 190,
+    height: 152,
+    transform: [{ rotate: "-15deg" }],
   },
   previewActions: {
     position: "absolute",
