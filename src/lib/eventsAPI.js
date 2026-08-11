@@ -2,23 +2,28 @@ import { supabase } from "./supabase";
 
 /**
  * eventsApi
- *   `events` and `anytime_impacts` are different tables with different column sets
- *    map, the list, and the event page all want to treat them the same way
- *    
- *    Everything gets normalized here so no component has to guess which query a row came from — they read `kind` instead.
+ *   scheduled events and drop-in places live in one `events` table now, split
+ *   by a `type` column
+ *
+ *   the map, the list, and the event page all want to treat them the same way
+ *
+ *   Everything gets normalized here so no component has to guess what kind of row it got — they read `kind` instead.
  */
 
-// ids collide across the two tables (both start at 1), so the display id is
-// prefixed for React keys while `rawId` keeps the real value for RPC calls
+// the display id is prefixed so it's obvious which kind a row is at a glance,
+// while `rawId` keeps the real value for RPC calls
 function makeKey(kind, id) {
   return `${kind}-${id}`;
 }
 
-// scheduled events — has start/end, an org host, and rsvp counts
+// one normalizer for both — scheduled rows carry start/end, drop-ins carry hours
 function normalizeEvent(row) {
+  const kind = row.type === "anytime" ? "anytime" : "event";
+
   return {
-    kind: "event",
-    id: makeKey("event", row.id),
+    kind,
+    type: row.type,
+    id: makeKey(kind, row.id),
     rawId: row.id,
     name: row.name,
     description: row.description,
@@ -31,7 +36,7 @@ function normalizeEvent(row) {
     thumbnail: row.thumbnail,
     start_datetime: row.start_datetime,
     end_datetime: row.end_datetime,
-    hours: null,
+    hours: row.hours,
     category: row.category,
     organization: row.organization,
     organizationName: row.organizations?.name ?? null,
@@ -42,62 +47,24 @@ function normalizeEvent(row) {
   };
 }
 
-// drop-in places — open by hours rather than scheduled, so no start/end
-function normalizeAnytime(row) {
-  return {
-    kind: "anytime",
-    id: makeKey("anytime", row.id),
-    rawId: row.id,
-    name: row.name,
-    description: row.description,
-    location: row.location,
-    city: row.city,
-    state: row.state,
-    country: row.country,
-    latitude: row.latitude,
-    longitude: row.longitude,
-    thumbnail: row.thumbnail,
-    start_datetime: null,
-    end_datetime: null,
-    hours: row.hours,
-    category: row.category,
-    organization: row.organization,
-    organizationName: row.organizations?.name ?? null,
-    organizationPagelink: row.organizations?.pagelink ?? null,
-    attendeeCount: 0,
-  };
-}
-
 // organizations is joined in so the page can show "Hosted by" without having to pull from db again
 // attending(count) gives the "24 going" number
-export async function fetchEvents() {
+// one query covers both tabs — the map needs every pin regardless of which tab happens to be selected
+export async function fetchImpactFeed() {
   const { data, error } = await supabase
     .from("events")
     .select("*, organizations(name, pagelink), attending(count)")
-    .order("start_datetime", { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map(normalizeEvent);
-}
-
-export async function fetchAnytimeImpacts() {
-  const { data, error } = await supabase
-    .from("anytime_impacts")
-    .select("*, organizations(name, pagelink)")
+    .order("start_datetime", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
 
   if (error) throw error;
-  return (data ?? []).map(normalizeAnytime);
-}
 
-// both tabs load together — the map needs every pin regardless of which tab happens to be selected
-export async function fetchImpactFeed() {
-  const [events, anytime] = await Promise.all([
-    fetchEvents(),
-    fetchAnytimeImpacts(),
-  ]);
+  const rows = (data ?? []).map(normalizeEvent);
 
-  return { events, anytime };
+  return {
+    events: rows.filter((row) => row.type === "scheduled"),
+    anytime: rows.filter((row) => row.type === "anytime"),
+  };
 }
 
 /**
@@ -105,6 +72,8 @@ export async function fetchImpactFeed() {
  *   call the postgres functions rather than writing to `attending`
  *   directly, so the acting user is taken from auth.uid() server-side and the
  *   client never passes (or spoofs) a user id.
+ *
+ *   rsvps are scheduled only — trigger rejects drop-ins, so the UI shouldn't offer the button on those
  */
 export async function rsvpToEvent(eventId, status = "going") {
   const { data, error } = await supabase.rpc("rsvp_to_event", {
@@ -177,11 +146,13 @@ export async function fetchAttendanceSummary(eventId) {
 }
 
 /**
- * Saved drop-ins
+ * Saved places
  *   Same as RSVP helpers above
  *   take the user from auth.uid() 
  *   toggle handles both directions in one call and returns the state it landed on
  *      caller doesn't have to know whether it was saved beforehand
+ *
+ *   saves work on both types, so anything in `events` can be bookmarked
  */
 export async function toggleSavedImpact(impactId) {
   const { data, error } = await supabase.rpc("toggle_saved_impact", {
