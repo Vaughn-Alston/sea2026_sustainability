@@ -93,3 +93,64 @@ export function formatRelative(value) {
 
   return diffMs >= 0 ? `in ${count} ${plural}` : `${count} ${plural} ago`;
 }
+
+/**
+ * Opening-hours helpers for anytime_impacts.hours
+ *
+ * Drop-in places aren't scheduled, so instead of a timestamp they use
+ *      jsonb blob keyed by weekday — {"mon": ["09:00","17:00"], "sun": null}
+ * UI shows Open Now / Closed rather than a date
+ * null back when there's nothing usable to show
+ */
+
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+// "09:00" -> minutes since midnight, so ranges are easy to compare
+function toMinutes(clockValue) {
+  if (typeof clockValue !== "string") return null;
+  const [hour, minute] = clockValue.split(":").map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  return hour * 60 + minute;
+}
+
+// today's [open, close] pair, or null when closed / no hours recorded
+export function todaysHours(hours, referenceDate = new Date()) {
+  if (!hours) return null;
+  const range = hours[WEEKDAY_KEYS[referenceDate.getDay()]];
+  return Array.isArray(range) && range.length === 2 ? range : null;
+}
+
+// true only if the place is open at this exact moment
+export function isOpenNow(hours, referenceDate = new Date()) {
+  const range = todaysHours(hours, referenceDate);
+  if (!range) return false;
+
+  const open = toMinutes(range[0]);
+  const close = toMinutes(range[1]);
+  if (open == null || close == null) return false;
+
+  const now = referenceDate.getHours() * 60 + referenceDate.getMinutes();
+  return now >= open && now < close;
+}
+
+// "Open Now" / "Closed" for the badge on drop-in cards
+export function formatOpenState(hours, referenceDate = new Date()) {
+  if (!hours) return null;
+  return isOpenNow(hours, referenceDate) ? "Open Now" : "Closed";
+}
+
+// "Open today 9:00 AM – 5:00 PM" for the detail sheet
+export function formatAnytimeWhen(hours, referenceDate = new Date()) {
+  const range = todaysHours(hours, referenceDate);
+  if (!range) return "Closed today";
+
+  const label = (clockValue) => {
+    const minutes = toMinutes(clockValue);
+    if (minutes == null) return clockValue;
+    const date = new Date(referenceDate);
+    date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+    return formatTime(date.toISOString());
+  };
+
+  return `Open today ${label(range[0])} – ${label(range[1])}`;
+}

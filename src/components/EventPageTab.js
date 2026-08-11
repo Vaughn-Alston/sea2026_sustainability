@@ -5,15 +5,44 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
-import { StyleSheet, View, Text, Image, Pressable } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  Pressable,
+  Linking,
+  Platform,
+} from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 
-import { formatEventWhen } from "../../utils/datetimeUtil";
+import {
+  formatEventWhen,
+  formatAnytimeWhen,
+  formatOpenState,
+  formatRelative,
+} from "../../utils/datetimeUtil";
+import {
+  distanceFromUser,
+  formatDistance,
+  formatPlace,
+  estimateDriveMinutes,
+  formatDriveTime,
+} from "../../utils/geoUtil";
+import {
+  cancelRsvp,
+  fetchAttendanceSummary,
+  fetchMyRsvp,
+  fetchMySavedImpactIds,
+  rsvpToEvent,
+  toggleSavedImpact,
+} from "../lib/eventsAPI";
 
 const HANDLE_HEIGHT = 24;
-const HEADER_HEIGHT = 170;
+const HEADER_HEIGHT = 200;
 
 function SheetHandle() {
   return (
@@ -29,8 +58,20 @@ function SheetHandle() {
  *   index 1 — half screen (opens on press)
  *   index 2 — full screen, scrollable for rest of details
  */
-const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
+const EventPageTab = forwardRef(function EventPageTab(
+  { event, userLocation, onClose, onRsvpChange, onSavedChange },
+  ref,
+) {
   const sheetRef = useRef(null);
+
+  // rsvp + attendance live here because they're per-event and refetched
+  // whenever the caller swaps which row is showing
+  const [rsvpStatus, setRsvpStatus] = useState(null);
+  const [summary, setSummary] = useState({ goingCount: 0, friendCount: 0 });
+  const [busy, setBusy] = useState(false);
+
+  // drop-ins can't be rsvp'd, so they track saved state instead
+  const [saved, setSaved] = useState(false);
 
   const snapPoints = useMemo(
     () => [HEADER_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
@@ -61,7 +102,165 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
     }
   }, [event]);
 
-  const when = formatEventWhen(event?.start_datetime, event?.end_datetime);
+  // drop-ins have no attending rows so only scheduled events get counts
+  // load whether they're already saved instead
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!event) {
+      setRsvpStatus(null);
+      setSaved(false);
+      setSummary({ goingCount: 0, friendCount: 0 });
+      return;
+    }
+
+    (async () => {
+      try {
+        if (event.kind === "event") {
+          const [status, counts] = await Promise.all([
+            fetchMyRsvp(event.id),
+            fetchAttendanceSummary(event.id),
+          ]);
+
+          if (cancelled) return;
+          setRsvpStatus(status);
+          setSummary(counts);
+          setSaved(false);
+        } else {
+          const savedIds = await fetchMySavedImpactIds();
+
+          if (cancelled) return;
+          setSaved(savedIds.includes(event.id));
+          setRsvpStatus(null);
+          setSummary({ goingCount: 0, friendCount: 0 });
+        }
+      } catch (error) {
+        console.log("Event state load failed", error.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [event]);
+
+  const isEvent = event?.kind === "event";
+  const hasRsvp = rsvpStatus != null;
+
+  // whichever value fills in the button for this kind of row
+  const actionActive = isEvent ? hasRsvp : saved;
+
+  const when = isEvent
+    ? formatEventWhen(event?.start_datetime, event?.end_datetime)
+    : formatAnytimeWhen(event?.hours);
+
+  // estimate driving time to event
+  const driveTime = formatDriveTime(estimateDriveMinutes(userLocation, event));
+
+  // "In 2 Hrs · 6.9 miles · Playa del Rey, CA"
+  const metaLine = useMemo(() => {
+    if (!event) return null;
+
+    const parts = [
+      isEvent
+        ? formatRelative(event.start_datetime)
+        : formatOpenState(event.hours),
+      formatDistance(distanceFromUser(userLocation, event)),
+      formatPlace(event.city, event.state),
+    ];
+
+    return parts.filter(Boolean).join(" · ");
+  }, [event, isEvent, userLocation]);
+
+  // scheduled rows rsvp
+  // drop-ins save
+  // db trigger rejects rsvps on anytime rows so the two paths can't be shared
+  const handleActionPress = useCallback(async () => {
+    if (!event || busy) return;
+
+    setBusy(true);
+
+    if (!isEvent) {
+      const previous = saved;
+      setSaved(!previous);
+
+      try {
+        // the toggle returns where it landed so two fast taps can't desync
+        const nowSaved = await toggleSavedImpact(event.id);
+        setSaved(nowSaved);
+        onSavedChange?.(event, nowSaved);
+      } catch (error) {
+        console.log("Save failed", error.message);
+        setSaved(previous);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    const next = hasRsvp ? null : "going";
+
+    // the counts snap back if the call throws
+    setRsvpStatus(next);
+    setSummary((current) => ({
+      ...current,
+      goingCount: current.goingCount + (hasRsvp ? -1 : 1),
+    }));
+
+    try {
+      if (hasRsvp) {
+        await cancelRsvp(event.id);
+      } else {
+        await rsvpToEvent(event.id);
+      }
+      onRsvpChange?.(event, next);
+    } catch (error) {
+      console.log("RSVP failed", error.message);
+      setRsvpStatus(hasRsvp ? rsvpStatus : null);
+      setSummary((current) => ({
+        ...current,
+        goingCount: current.goingCount + (hasRsvp ? 1 : -1),
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    event,
+    isEvent,
+    busy,
+    saved,
+    hasRsvp,
+    rsvpStatus,
+    onRsvpChange,
+    onSavedChange,
+  ]);
+
+  // lat/long opens a precise pin - the old location string made maps guess
+  const handleDirectionsPress = useCallback(() => {
+    if (!event) return;
+
+    const label = encodeURIComponent(event.name ?? "");
+    const url =
+      event.latitude != null && event.longitude != null
+        ? Platform.select({
+            ios: `maps://?daddr=${event.latitude},${event.longitude}&q=${label}`,
+            android: `geo:${event.latitude},${event.longitude}?q=${event.latitude},${event.longitude}(${label})`,
+          })
+        : `https://maps.google.com/?q=${encodeURIComponent(
+            [event.location, event.city, event.state]
+              .filter(Boolean)
+              .join(", "),
+          )}`;
+
+    Linking.openURL(url).catch(() =>
+      console.log("Could not open directions for", event.id),
+    );
+  }, [event]);
+
+  // full street line for the details block
+  const fullAddress = event
+    ? [event.location, event.city, event.state].filter(Boolean).join(", ")
+    : null;
 
   return (
     <BottomSheet
@@ -95,8 +294,11 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
                 }
                 hitSlop={6}
               >
-                {event.image ? (
-                  <Image source={{ uri: event.image }} style={styles.avatar} />
+                {event.thumbnail ? (
+                  <Image
+                    source={{ uri: event.thumbnail }}
+                    style={styles.avatar}
+                  />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]} />
                 )}
@@ -106,9 +308,25 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
                 <Text style={styles.title} numberOfLines={2}>
                   {event.name}
                 </Text>
-                {!!event.location && (
+
+                {!!when && (
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    {when}
+                  </Text>
+                )}
+
+                {!!metaLine && (
                   <Text style={styles.location} numberOfLines={1}>
-                    {event.location}
+                    {metaLine}
+                  </Text>
+                )}
+
+                {!!event.organizationName && (
+                  <Text style={styles.hostLine} numberOfLines={1}>
+                    Hosted by{" "}
+                    <Text style={styles.hostName}>
+                      {event.organizationName}
+                    </Text>
                   </Text>
                 )}
               </View>
@@ -123,10 +341,35 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
             </View>
 
             <View style={styles.buttonRow}>
+              {/* scheduled events rsvp, drop-ins just save */}
               <Pressable
-                style={[styles.button, styles.buttonNeutral, styles.rsvpButton]}
-                onPress={() => console.log("RSVP", event.id)}
-              />
+                style={[
+                  styles.button,
+                  styles.rsvpButton,
+                  actionActive ? styles.buttonSelected : styles.buttonNeutral,
+                ]}
+                onPress={handleActionPress}
+              >
+                <Ionicons
+                  name={actionActive ? "bookmark" : "bookmark-outline"}
+                  size={18}
+                  color={actionActive ? "#FFFFFF" : "#111111"}
+                />
+                <Text
+                  style={[
+                    styles.buttonLabel,
+                    actionActive && styles.buttonLabelSelected,
+                  ]}
+                >
+                  {isEvent
+                    ? hasRsvp
+                      ? "RSVP'D"
+                      : "RSVP"
+                    : saved
+                      ? "Saved"
+                      : "Save"}
+                </Text>
+              </Pressable>
 
               <Pressable
                 style={[
@@ -134,13 +377,17 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
                   styles.buttonNeutral,
                   styles.directionsButton,
                 ]}
-                onPress={() => console.log("Directions", event.location)}
-              />
+              >
+                <Ionicons name="car" size={18} color="#111111" />
+                <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
+              </Pressable>
 
               <Pressable
                 style={[styles.button, styles.buttonAccent, styles.sendButton]}
                 onPress={() => console.log("Send", event.id)}
-              />
+              >
+                <Ionicons name="send" size={17} color="#111111" />
+              </Pressable>
             </View>
           </View>
 
@@ -149,10 +396,13 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {!!when && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>When</Text>
-                <Text style={styles.sectionBody}>{when}</Text>
+            {isEvent && summary.goingCount > 0 && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  {summary.goingCount} going
+                  {summary.friendCount > 0 &&
+                    ` · ${summary.friendCount} friends attending`}
+                </Text>
               </View>
             )}
 
@@ -163,23 +413,39 @@ const EventPageTab = forwardRef(function EventPageTab({ event, onClose }, ref) {
               </View>
             )}
 
-            {!!event.location && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Where</Text>
-                <Text style={styles.sectionBody}>{event.location}</Text>
-              </View>
-            )}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Event Details</Text>
 
-            {/* Placeholder until organizations are joined in on the query. */}
-            {event.organization != null && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Hosted by</Text>
-                <Text style={styles.sectionBody}>
-                  {event.organizationName ??
-                    `Organization #${event.organization}`}
-                </Text>
-              </View>
-            )}
+              {!!when && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={17} color="#7A7A7A" />
+                  <Text style={styles.detailText}>{when}</Text>
+                </View>
+              )}
+
+              {!!fullAddress && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={17} color="#7A7A7A" />
+                  <Text style={styles.detailText}>{fullAddress}</Text>
+                </View>
+              )}
+
+              {!!event.organizationName && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="people-outline" size={17} color="#7A7A7A" />
+                  <Text style={styles.detailText}>
+                    Hosted by {event.organizationName}
+                  </Text>
+                </View>
+              )}
+
+              {!!event.category && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="pricetag-outline" size={17} color="#7A7A7A" />
+                  <Text style={styles.detailText}>{event.category}</Text>
+                </View>
+              )}
+            </View>
           </BottomSheetScrollView>
         </View>
       ) : null}
@@ -260,10 +526,26 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#111111",
   },
+  subtitle: {
+    marginTop: 3,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#3A3A3A",
+  },
   location: {
     marginTop: 4,
     fontSize: 15,
     color: "#7A7A7A",
+  },
+  hostLine: {
+    marginTop: 3,
+    fontSize: 14,
+    color: "#7A7A7A",
+  },
+  hostName: {
+    color: "#111111",
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   closeButton: {
     width: 36,
@@ -283,11 +565,16 @@ const styles = StyleSheet.create({
   button: {
     height: 52,
     borderRadius: 100,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 7,
   },
   buttonNeutral: {
     backgroundColor: "#F0F0F0",
+  },
+  buttonSelected: {
+    backgroundColor: "#111111",
   },
   buttonAccent: {
     backgroundColor: "#FFFC00",
@@ -305,6 +592,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#111111",
+  },
+  buttonLabelSelected: {
+    color: "#FFFFFF",
   },
 
   // Scrollable detail
@@ -326,6 +616,28 @@ const styles = StyleSheet.create({
   sectionBody: {
     fontSize: 16,
     lineHeight: 23,
+    color: "#2A2A2A",
+  },
+  card: {
+    backgroundColor: "#F7F7F9",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 22,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111111",
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+  },
+  detailText: {
+    flex: 1,
+    fontSize: 15,
     color: "#2A2A2A",
   },
 });

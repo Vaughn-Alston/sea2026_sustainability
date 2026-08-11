@@ -8,77 +8,68 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
+import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
+
+/**
+ * EventCard
+ *   Takes one normalized row (see lib/eventsAPI) and derives its own display
+ *   strings, so the list doesn't have to spread a dozen props per card. Works
+ *   for both kinds — `event` rows show a date, `anytime` rows show Open Now.
+ *
+ *   heart = save, number next to it is how many people saved it
+ *   rsvp lives on the event page now, so the card only carries the heart
+ */
 export default function EventCard({
   event,
-  title,
-  image,
-  dateTime,
-  distance,
-  tag,
-  attendees = [],
-  attendeeCount = 0,
-  initialLikes = 7,
-  //All events start false then if like will turn true
-  liked = false,
+  //All events start false then if saved will turn true
+  saved = false,
+  userLocation,
   onPress,
-  // Function handles when the like button is pressed
-  onLikePress,
-  onActionPress,
+  // Function handles when the heart button is pressed
+  onSavePress,
 }) {
+  // This block will control what is being displayed to the card
 
-  // This block of data 29 - 34 will control what is being displyed to the card
+  const cardTitle = event?.name;
+  const cardImage = event?.thumbnail;
 
-  //CardTitle -> will display title if it excist if not -> it will display event.title
-  const cardTitle = title ?? event?.title;
-  const cardImage = image ?? event?.image;
+  // scheduled rows get a date line, drop-ins get their open state instead
+  const cardDateTime =
+    event?.kind === "event"
+      ? formatEventWhen(event?.start_datetime, event?.end_datetime)
+      : formatOpenState(event?.hours);
 
-// Build one date/time string from event.date and event.time, skipping missing values.
-  const cardDateTime = dateTime ?? [event?.date, event?.time].filter(Boolean).join(" ");
+  // worked out from the row's lat/long against where the user is standing
+  const cardDistance = formatDistance(distanceFromUser(userLocation, event));
 
+  // impact category - Water, Food, etc
+  const cardTag = event?.category;
 
-//Use distance if it was passed directly. If not, use event.distance
-  const cardDistance = distance ?? event?.distance;
-// Use tag if it was passed directly. If not, use event.category.
-  const cardTag = tag ?? event?.category;
+  // the db only sends a count, so the avatar row stays empty until the query
+  // pulls attendee profiles too
+  const cardAttendees = event?.attendees ?? [];
 
+  const cardAttendeeCount = event?.attendeeCount || cardAttendees.length;
 
-
-
-//This checks if the direct prop attendees if it has people inside it use attendees // if not then use event.attendees, 
-//if that doesnt exist then use a empty array
-  const cardAttendees = attendees.length
-    ? attendees
-    : event?.attendees ?? [];
-
-//this will check if there is a value in the prop that is passed if not then use the array length that is passed
-  const cardAttendeeCount = 
-    attendeeCount || cardAttendees.length;
-
-  // This will show the first 3 people that are in the going 
+  // This will show the first 3 people that are in the going
   const visibleAttendees = cardAttendees.slice(0, 3);
 
-  //increment the count
-  const likeCount = initialLikes + (liked ? 1 : 0);
+  // everyone who saved it, not just this user - comes from the db rather than
+  // local state, so it survives closing the sheet
+  const saveCount = event?.saveCount ?? 0;
 
-
-
-
-// Runs when the user taps the heart button on this card.
-  const handleHeartPress = (event) => {
+  // Runs when the user taps the heart button on this card.
+  const handleHeartPress = (pressEvent) => {
     // Prevent the full card's onPress from running.
-    event.stopPropagation?.();
+    pressEvent.stopPropagation?.();
 
-    // The user can only increment the count once.
-    onLikePress?.();
+    onSavePress?.();
   };
-  
 
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
       {/* Circular image on the far left */}
@@ -129,13 +120,11 @@ export default function EventCard({
               <Image
                 key={attendee.id ?? index}
                 source={
-                  typeof (attendee.image ?? attendee) ===
-                  "string"
+                  typeof (attendee.avatar ?? attendee) === "string"
                     ? {
-                        uri:
-                          attendee.image ?? attendee,
+                        uri: attendee.avatar ?? attendee,
                       }
-                    : attendee.image ?? attendee
+                    : attendee.avatar ?? attendee
                 }
                 style={[
                   styles.attendeeAvatar,
@@ -155,28 +144,25 @@ export default function EventCard({
 
       {/* Actions on the far right */}
       <View style={styles.cardActions}>
+        {/* heart saves the place - count is everyone who saved it
+          * comes from the db rather than local state */}
         <Pressable
           style={styles.heartButton}
           onPress={handleHeartPress}
           hitSlop={8}
         >
           <Ionicons
-            name={liked ? "heart" : "heart-outline"}
+            name={saved ? "heart" : "heart-outline"}
             size={27}
-            color={liked ? "#E53935" : "#555555"}
+            color={saved ? "#E53935" : "#555555"}
           />
 
-          <Text
-            style={[
-              styles.likeCount,
-              liked && styles.likedCount,
-            ]}
-          >
-            {likeCount}
-          </Text>
+          {saveCount > 0 && (
+            <Text style={[styles.likeCount, saved && styles.likedCount]}>
+              {saveCount}
+            </Text>
+          )}
         </Pressable>
-
-
       </View>
     </Pressable>
   );
@@ -323,14 +309,5 @@ const styles = StyleSheet.create({
 
   likedCount: {
     color: "#E53935",
-  },
-
-  actionButton: {
-    width: 48,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EEF1F3",
   },
 });
