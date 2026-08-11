@@ -82,6 +82,13 @@ export default function EventList({
     onClose?.();
   }, [onClose]);
 
+  // reset to scheduled events tab after closed - tab you were on won't persist
+  useEffect(() => {
+    if (!visible) {
+      setSelectedTab("events");
+    }
+  }, [visible]);
+
   useEffect(() => {
     if (visible) {
       sheetRef.current?.snapToIndex(1);
