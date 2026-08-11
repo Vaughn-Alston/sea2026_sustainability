@@ -4,6 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
+import CommunityTab from "../components/CommunityTab";
 
 const AVATAR_RING_SIZE = 76;
 const AVATAR_RING_STROKE = 2.5;
@@ -122,76 +123,86 @@ export default function ImpactScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Impact leader card */}
-        <View style={styles.card}>
-          <View style={styles.avatarRing}>
-            <ProgressRing progress={AVATAR_RING_PROGRESS} />
-            <ImagePlaceholder style={styles.avatarImage} />
-            <View style={styles.avatarBadge}>
-              <Text style={styles.avatarBadgeText}>2</Text>
+        {activeTab === "overview" ? (
+          <>
+            {/* Impact leader card */}
+            <View style={styles.card}>
+              <View style={styles.avatarRing}>
+                <ProgressRing progress={AVATAR_RING_PROGRESS} />
+                <ImagePlaceholder style={styles.avatarImage} />
+                <View style={styles.avatarBadge}>
+                  <Text style={styles.avatarBadgeText}>2</Text>
+                </View>
+              </View>
+
+              <View style={styles.leaderTextBlock}>
+                <Text style={styles.leaderTitle}>Silver Impact Leader</Text>
+                <Text style={styles.leaderSubtitle}>
+                  10 more actions until Gold Impact Leader
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.leaderTextBlock}>
-            <Text style={styles.leaderTitle}>Silver Impact Leader</Text>
-            <Text style={styles.leaderSubtitle}>
-              10 more actions until Gold Impact Leader
-            </Text>
-          </View>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {STATS.map((stat) => (
-            <View key={stat.label} style={styles.statItem}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+            {/* Stats */}
+            <View style={styles.statsRow}>
+              {STATS.map((stat) => (
+                <View key={stat.label} style={styles.statItem}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        {/* Rewards */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Rewards</Text>
-          <Pressable>
-            <Text style={styles.seeAll}>See All</Text>
-          </Pressable>
-        </View>
+            {/* Rewards */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Rewards</Text>
+              <Pressable onPress={() => navigation.navigate("Rewards")}>
+                <Text style={styles.seeAll}>See All</Text>
+              </Pressable>
+            </View>
 
-        <View style={styles.card}>
-          <ImagePlaceholder style={styles.rewardImage} />
-          <View style={styles.rewardTextBlock}>
-            <Text style={styles.rewardEyebrow}>Next Unlock</Text>
-            <Text style={styles.rewardTitle}>Seal Bitmoji Pet</Text>
-            <Text style={styles.rewardSubtitle}>1 more action to unlock!</Text>
-          </View>
-        </View>
+            <View style={styles.card}>
+              <ImagePlaceholder style={styles.rewardImage} />
+              <View style={styles.rewardTextBlock}>
+                <Text style={styles.rewardEyebrow}>Next Unlock</Text>
+                <Text style={styles.rewardTitle}>Seal Bitmoji Pet</Text>
+                <Text style={styles.rewardSubtitle}>
+                  1 more action to unlock!
+                </Text>
+              </View>
+            </View>
 
-        {/* Recent impact */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Impact</Text>
-          <Pressable>
-            <Text style={styles.seeAll}>See All</Text>
-          </Pressable>
-        </View>
+            {/* Recent impact */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Impact</Text>
+              <Pressable>
+                <Text style={styles.seeAll}>See All</Text>
+              </Pressable>
+            </View>
 
-        {RECENT_IMPACT.map((item) => (
-          <View key={item.id} style={[styles.card, styles.recentCard]}>
-            <ImagePlaceholder style={styles.recentImage} />
-            <View style={styles.recentTextBlock}>
-              <Text style={styles.recentTitle}>{item.title}</Text>
-              <Text style={styles.recentMeta}>
-                {item.hours ? `${item.date} · ${item.hours}` : item.date}
+            {RECENT_IMPACT.map((item) => (
+              <View key={item.id} style={[styles.card, styles.recentCard]}>
+                <ImagePlaceholder style={styles.recentImage} />
+                <View style={styles.recentTextBlock}>
+                  <Text style={styles.recentTitle}>{item.title}</Text>
+                  <Text style={styles.recentMeta}>
+                    {item.hours ? `${item.date} · ${item.hours}` : item.date}
+                  </Text>
+                  <Text style={styles.recentOrg}>{item.organization}</Text>
+                </View>
+              </View>
+            ))}
+
+            <Pressable style={styles.exportButton}>
+              <Ionicons name="download-outline" size={18} color="#111111" />
+              <Text style={styles.exportButtonText}>
+                Export Volunteer Record
               </Text>
-              <Text style={styles.recentOrg}>{item.organization}</Text>
-            </View>
-          </View>
-        ))}
-
-        <Pressable style={styles.exportButton}>
-          <Ionicons name="download-outline" size={18} color="#111111" />
-          <Text style={styles.exportButtonText}>Export Volunteer Record</Text>
-        </Pressable>
+            </Pressable>
+          </>
+        ) : (
+          <CommunityTab />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
