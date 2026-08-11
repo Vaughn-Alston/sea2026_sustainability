@@ -12,8 +12,12 @@ import AstrologyScreen from "../screens/AstrologyScreen";
 import MemoryScreen from "../screens/MemoryScreen";
 import EventScreen from "../screens/EventScreen"; //New component by Sona and Christian
 import ImpactScreen from "../screens/ImpactScreen";
+<<<<<<< HEAD
 import RewardsScreen from "../screens/RewardsScreen";
 import SendToScreen from "../screens/SendToScreen";
+=======
+import SendToScreen from "../screens/sendToScreen";
+>>>>>>> main
 
 const Stack = createStackNavigator();
 

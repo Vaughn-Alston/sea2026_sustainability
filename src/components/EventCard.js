@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -8,20 +8,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-
-
-//I need to import my data to display on my modal
-
-import {anytimeEvents } from "../data/anytimeEvents";
-import {ascheduledevents} from "../data/ascheduledevents";
-
-
-
-
-
-
-
 export default function EventCard({
+  event,
   title,
   image,
   dateTime,
@@ -30,27 +18,60 @@ export default function EventCard({
   attendees = [],
   attendeeCount = 0,
   initialLikes = 7,
+  //All events start false then if like will turn true
+  liked = false,
   onPress,
+  // Function handles when the like button is pressed
+  onLikePress,
   onActionPress,
 }) {
-  const visibleAttendees = attendees.slice(0, 3);
 
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(initialLikes);
+  // This block of data 29 - 34 will control what is being displyed to the card
 
-  const [rsvp, setRsvp] = useState(false);
+  //CardTitle -> will display title if it excist if not -> it will display event.title
+  const cardTitle = title ?? event?.title;
+  const cardImage = image ?? event?.image;
+
+// Build one date/time string from event.date and event.time, skipping missing values.
+  const cardDateTime = dateTime ?? [event?.date, event?.time].filter(Boolean).join(" ");
 
 
+//Use distance if it was passed directly. If not, use event.distance
+  const cardDistance = distance ?? event?.distance;
+// Use tag if it was passed directly. If not, use event.category.
+  const cardTag = tag ?? event?.category;
+
+
+
+
+//This checks if the direct prop attendees if it has people inside it use attendees // if not then use event.attendees, 
+//if that doesnt exist then use a empty array
+  const cardAttendees = attendees.length
+    ? attendees
+    : event?.attendees ?? [];
+
+//this will check if there is a value in the prop that is passed if not then use the array length that is passed
+  const cardAttendeeCount = 
+    attendeeCount || cardAttendees.length;
+
+  // This will show the first 3 people that are in the going 
+  const visibleAttendees = cardAttendees.slice(0, 3);
+
+  //increment the count
+  const likeCount = initialLikes + (liked ? 1 : 0);
+
+
+
+
+// Runs when the user taps the heart button on this card.
   const handleHeartPress = (event) => {
     // Prevent the full card's onPress from running.
     event.stopPropagation?.();
 
     // The user can only increment the count once.
-    if (liked) return;
-
-    setLiked(true);
-    setLikeCount((currentCount) => currentCount + 1);
+    onLikePress?.();
   };
+  
 
   return (
     <Pressable
@@ -61,8 +82,15 @@ export default function EventCard({
       onPress={onPress}
     >
       {/* Circular image on the far left */}
-      {image ? (
-        <Image source={image} style={styles.cardMedia} />
+      {cardImage ? (
+        <Image
+          source={
+            typeof cardImage === "string"
+              ? { uri: cardImage }
+              : cardImage
+          }
+          style={styles.cardMedia}
+        />
       ) : (
         <View style={[styles.cardMedia, styles.imagePlaceholder]}>
           <Text style={styles.imagePlaceholderText}>IMG</Text>
@@ -72,25 +100,25 @@ export default function EventCard({
       {/* Main card information */}
       <View style={styles.cardContent}>
         <Text style={styles.title} numberOfLines={1}>
-          {title}
+          {cardTitle}
         </Text>
 
-        {!!dateTime && (
+        {!!cardDateTime && (
           <Text style={styles.dateTime} numberOfLines={1}>
-            {dateTime}
+            {cardDateTime}
           </Text>
         )}
 
-        {!!distance && (
+        {!!cardDistance && (
           <Text style={styles.distance}>
-            {distance}
+            {cardDistance}
           </Text>
         )}
 
-        {!!tag && (
+        {!!cardTag && (
           <View style={styles.tag}>
             <Text style={styles.tagText}>
-              {tag}
+              {cardTag}
             </Text>
           </View>
         )}
@@ -100,7 +128,15 @@ export default function EventCard({
             {visibleAttendees.map((attendee, index) => (
               <Image
                 key={attendee.id ?? index}
-                source={attendee.image ?? attendee}
+                source={
+                  typeof (attendee.image ?? attendee) ===
+                  "string"
+                    ? {
+                        uri:
+                          attendee.image ?? attendee,
+                      }
+                    : attendee.image ?? attendee
+                }
                 style={[
                   styles.attendeeAvatar,
                   index > 0 && styles.overlappingAvatar,
@@ -109,9 +145,9 @@ export default function EventCard({
             ))}
           </View>
 
-          {attendeeCount > 0 && (
+          {cardAttendeeCount > 0 && (
             <Text style={styles.attendeeText}>
-              {attendeeCount} Going
+              {cardAttendeeCount} Going
             </Text>
           )}
         </View>
@@ -141,51 +177,6 @@ export default function EventCard({
         </Pressable>
 
 
-
-
-
-
-        {/* Here I will create a rsvp button that will track the user if he clicks it */}
-
-   <Pressable
-          style={styles.actionButton}
-          onPress={(event) => {
-            event.stopPropagation?.();
-            onActionPress?.();
-          }}
-          
-        >
-
-
-     
-
-            <Text  style={styles.attendeeText}>
-
-
-            RSVP
-
-            </Text>
-
-     </Pressable>
-
-
-
-        
-
-        <Pressable
-          style={styles.actionButton}
-          onPress={(event) => {
-            event.stopPropagation?.();
-            onActionPress?.();
-          }}
-          hitSlop={8}
-        >
-          <Ionicons
-            name="navigate"
-            size={23}
-            color="#111111"
-          />
-        </Pressable>
       </View>
     </Pressable>
   );
