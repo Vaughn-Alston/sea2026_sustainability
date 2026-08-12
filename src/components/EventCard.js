@@ -281,13 +281,13 @@ const styles = StyleSheet.create({
   },
 
   openText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#1FA463",
   },
 
   closedText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: "#D93636",
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   },
 
   attendeeMoreText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#FFFFFF",
   },

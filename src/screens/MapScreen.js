@@ -446,6 +446,7 @@ export default function MapScreen({ navigation }) {
         ref={eventTabRef}
         event={selectedEvent}
         userLocation={location}
+        navigation={navigation}
         onRsvpChange={handleRsvpChange}
         onSavedChange={handleSavedChange}
         onClose={handleEventClosed}
