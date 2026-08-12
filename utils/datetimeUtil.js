@@ -25,7 +25,7 @@ export function formatDate(value) {
   });
 }
 
-// "9:00 AM" 
+// "9:00 AM"
 export function formatTime(value) {
   const date = parseDate(value);
   if (!date) return null;
@@ -49,6 +49,17 @@ export function formatEventWhen(startValue, endValue) {
   return endTime
     ? `${datePart} · ${startTime} – ${endTime}`
     : `${datePart} · ${startTime}`;
+}
+
+// compact version for the event card - day + date + start time only
+// no end time, so it fits on one line next to the distance
+// "Sun, May 27, 9:00 AM"
+export function formatEventShort(startValue) {
+  const datePart = formatDate(startValue);
+  if (!datePart) return null;
+
+  const startTime = formatTime(startValue);
+  return startTime ? `${datePart}, ${startTime}` : datePart;
 }
 
 // true if the event's end (or start, if no end) is before today
@@ -95,12 +106,12 @@ export function formatRelative(value) {
 }
 
 /**
- * Opening-hours helpers for anytime_impacts.hours
+ * Opening-hours helpers for `anytime_impacts.hours`.
  *
- * Drop-in places aren't scheduled, so instead of a timestamp they use
- *      jsonb blob keyed by weekday — {"mon": ["09:00","17:00"], "sun": null}
- * UI shows Open Now / Closed rather than a date
- * null back when there's nothing usable to show
+ * Drop-in places aren't scheduled, so instead of a timestamp they carry a
+ * jsonb blob keyed by weekday — {"mon": ["09:00","17:00"], "sun": null} — and
+ * the UI shows Open Now / Closed rather than a date. Same contract as above:
+ * `null` back when there's nothing usable to show.
  */
 
 const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];

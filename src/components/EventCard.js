@@ -2,22 +2,41 @@ import React from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
+import {
+  formatEventWhen,
+  isOpenNow,
+  formatEventShort,
+} from "../../utils/datetimeUtil";
 import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
 
 const MAX_VISIBLE_AVATARS = 3;
+const THUMB_SIZE = 64;
+const META_HEIGHT = 30; // chip + avatars share this height, centered together
+
+// category text -> emoji, matches the values seeded on events.category anything unmapped just shows the label with no emoji
+const CATEGORY_EMOJI = {
+  Water: "💧",
+  Restore: "🌱",
+  Reuse: "♻️",
+  Food: "🍎",
+  Energy: "⚡",
+};
+
+// 1200 -> "1.2K" so the save pill stays short
+function formatCount(n) {
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+}
 
 /**
  * EventCard
- *   Takes one normalized row (see lib/eventsAPI) and derives its own display
- *   strings, so the list doesn't have to spread a dozen props per card. Works
- *   for both kinds — `event` rows show a date, `anytime` rows show Open Now.
+ *   top row  - story thumbnail + text block + heart pill
+ *   meta row - full card width: category chip on the left, avatar stack on
+ *              the right, both the same height and centered together
  *
- *   heart = save, number next to it is how many people saved it
- *   the thumbnail always wears a blue story ring, snapchat-style - taps on it
- *   just log for now
- *
- *   avatar row is friends attending only
+ *   scheduled events show a date + avatar stack
+ *   drop-ins show green Open Now / red Closed and no stack (chip sits alone)
  */
 export default function EventCard({
   event,
@@ -28,39 +47,37 @@ export default function EventCard({
   // Function handles when the heart button is pressed
   onSavePress,
 }) {
-  // This block will control what is being displayed to the card
+  const isEvent = event?.kind === "event";
 
   const cardTitle = event?.name;
   const cardImage = event?.thumbnail;
+  const cardSubtitle = event?.venue_type;
 
-  // scheduled rows get a date line, drop-ins get their open state instead
-  const cardDateTime =
-    event?.kind === "event"
-      ? formatEventWhen(event?.start_datetime, event?.end_datetime)
-      : formatOpenState(event?.hours);
+  // scheduled rows show a date, drop-ins show open/closed (colored)
+  const cardWhen = isEvent ? formatEventShort(event?.start_datetime) : null;
+  const open = !isEvent ? isOpenNow(event?.hours) : null;
 
-  // worked out from the row's lat/long against where the user is standing
   const cardDistance = formatDistance(distanceFromUser(userLocation, event));
 
-  // impact category - Water, Food, etc
+  // impact category - Water, Food, etc - paired with its emoji
   const cardTag = event?.category;
+  const cardTagEmoji = cardTag ? CATEGORY_EMOJI[cardTag] : null;
 
-  // already filtered to friends attending, see eventsApi
-  const cardAttendees = event?.attendees ?? [];
-  const cardAttendeeCount = event?.attendeeCount ?? cardAttendees.length;
+  // already filtered to friends attending, see eventsApi - drop-ins skip this
+  const cardAttendees = isEvent ? (event?.attendees ?? []) : [];
+  const cardAttendeeCount = isEvent
+    ? (event?.attendeeCount ?? cardAttendees.length)
+    : 0;
 
   const visibleAttendees = cardAttendees.slice(0, MAX_VISIBLE_AVATARS);
   const overflowCount = cardAttendeeCount - visibleAttendees.length;
 
-  // everyone who saved it, not just this user - comes from the db rather than
-  // local state, so it survives closing the sheet
+  // everyone who saved it - from the db, so it survives closing the sheet
   const saveCount = event?.saveCount ?? 0;
 
-  // Runs when the user taps the heart button on this card.
   const handleHeartPress = (pressEvent) => {
     // Prevent the full card's onPress from running.
     pressEvent.stopPropagation?.();
-
     onSavePress?.();
   };
 
@@ -69,116 +86,121 @@ export default function EventCard({
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      {/* Circular image on the far left - always wears the blue story ring */}
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation?.();
-          console.log("Open story", event?.id);
-        }}
-        style={styles.thumbRing}
-      >
-        {cardImage ? (
-          <Image
-            source={
-              typeof cardImage === "string" ? { uri: cardImage } : cardImage
-            }
-            style={styles.cardMedia}
-          />
-        ) : (
-          <View style={[styles.cardMedia, styles.imagePlaceholder]} />
-        )}
-      </Pressable>
-
-      {/* Main card information */}
-      <View style={styles.cardContent}>
-        <Text style={styles.title} numberOfLines={1}>
-          {cardTitle}
-        </Text>
-
-        {!!cardDateTime && (
-          <Text style={styles.dateTime} numberOfLines={1}>
-            {cardDateTime}
-          </Text>
-        )}
-
-        {!!cardDistance && <Text style={styles.distance}>{cardDistance}</Text>}
-
-        <View style={styles.metaRow}>
-          {!!cardTag && (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{cardTag}</Text>
-            </View>
-          )}
-
-          {cardAttendeeCount > 0 && (
-            <View style={styles.attendeeContainer}>
-              <View style={styles.avatarGroup}>
-                {visibleAttendees.map((attendee, index) => {
-                  const hasImage = !!attendee.image;
-
-                  return hasImage ? (
-                    <Image
-                      key={attendee.id ?? index}
-                      source={{ uri: attendee.image }}
-                      style={[
-                        styles.attendeeAvatar,
-                        index > 0 && styles.overlappingAvatar,
-                      ]}
-                    />
-                  ) : (
-                    <View
-                      key={attendee.id ?? index}
-                      style={[
-                        styles.attendeeAvatar,
-                        styles.attendeeAvatarEmpty,
-                        index > 0 && styles.overlappingAvatar,
-                      ]}
-                    />
-                  );
-                })}
-
-                {overflowCount > 0 && (
-                  <View
-                    style={[
-                      styles.attendeeAvatar,
-                      styles.attendeeAvatarMore,
-                      styles.overlappingAvatar,
-                    ]}
-                  >
-                    <Text style={styles.attendeeMoreText}>
-                      +{overflowCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <Text style={styles.attendeeText}>{cardAttendeeCount} Going</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Actions on the far right */}
-      <View style={styles.cardActions}>
-        {/* heart saves the place - count is everyone who saved it
-         * comes from the db rather than local state */}
+      {/* TOP ROW - thumbnail + text + heart pill */}
+      <View style={styles.topRow}>
         <Pressable
-          style={styles.heartButton}
-          onPress={handleHeartPress}
-          hitSlop={8}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            console.log("Open story", event?.id);
+          }}
+          style={styles.thumbRing}
         >
-          <Ionicons
-            name={saved ? "heart" : "heart-outline"}
-            size={22}
-            color={saved ? "#E53935" : "#555555"}
-          />
-
-          {saveCount > 0 && (
-            <Text style={[styles.likeCount, saved && styles.likedCount]}>
-              {saveCount}
-            </Text>
+          {cardImage ? (
+            <Image
+              source={
+                typeof cardImage === "string" ? { uri: cardImage } : cardImage
+              }
+              style={styles.cardMedia}
+            />
+          ) : (
+            <View style={[styles.cardMedia, styles.imagePlaceholder]} />
           )}
         </Pressable>
+
+        <View style={styles.textBlock}>
+          <Text style={styles.title} numberOfLines={2}>
+            {cardTitle}
+          </Text>
+
+          {!!cardSubtitle && (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {cardSubtitle}
+            </Text>
+          )}
+
+          {/* date for events, colored open state for drop-ins */}
+          {isEvent ? (
+            (!!cardWhen || !!cardDistance) && (
+              <Text style={styles.whenLine} numberOfLines={1}>
+                {[cardWhen, cardDistance].filter(Boolean).join(" • ")}
+              </Text>
+            )
+          ) : (
+            <Text style={styles.whenLine} numberOfLines={1}>
+              <Text style={open ? styles.openText : styles.closedText}>
+                {open ? "Open Now" : "Closed"}
+              </Text>
+              {!!cardDistance && `  •  ${cardDistance}`}
+            </Text>
+          )}
+        </View>
+
+        {/* save pill - heart + count on the sheet's close-button grey */}
+        <Pressable style={styles.savePill} onPress={handleHeartPress} hitSlop={6}>
+            <Ionicons
+              name={saved ? "heart" : "heart-outline"}
+              size={18}
+              color={saved ? "#E53935" : "#555555"}
+            />
+          </Pressable>
+      </View>
+
+      {/* META ROW - full width: chip left, avatar stack right, matched height */}
+      <View style={styles.metaRow}>
+        {!!cardTag ? (
+          <View style={styles.tag}>
+            {!!cardTagEmoji && (
+              <Text style={styles.tagEmoji}>{cardTagEmoji}</Text>
+            )}
+            <Text style={styles.tagText}>{cardTag}</Text>
+          </View>
+        ) : (
+          <View />
+        )}
+
+        {/* drop-ins have no avatar stack */}
+        {isEvent && cardAttendeeCount > 0 && (
+          <View style={styles.attendeeContainer}>
+            <View style={styles.avatarGroup}>
+              {visibleAttendees.map((attendee, index) =>
+                attendee.image ? (
+                  <Image
+                    key={attendee.id ?? index}
+                    source={{ uri: attendee.image }}
+                    style={[
+                      styles.attendeeAvatar,
+                      index > 0 && styles.overlappingAvatar,
+                    ]}
+                  />
+                ) : (
+                  // null avatar - plain grey circle
+                  <View
+                    key={attendee.id ?? index}
+                    style={[
+                      styles.attendeeAvatar,
+                      styles.attendeeAvatarEmpty,
+                      index > 0 && styles.overlappingAvatar,
+                    ]}
+                  />
+                ),
+              )}
+
+              {overflowCount > 0 && (
+                <View
+                  style={[
+                    styles.attendeeAvatar,
+                    styles.attendeeAvatarMore,
+                    styles.overlappingAvatar,
+                  ]}
+                >
+                  <Text style={styles.attendeeMoreText}>+{overflowCount}</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.attendeeText}>{cardAttendeeCount} Going</Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -187,95 +209,130 @@ export default function EventCard({
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    minHeight: 96,
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 10,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
 
     shadowColor: "#000000",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
 
   cardPressed: {
-    opacity: 0.85,
+    opacity: 0.9,
   },
 
-  // Circular event image
-  cardMedia: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    resizeMode: "cover",
+  // TOP ROW
+  topRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
 
   thumbRing: {
-    borderRadius: 36,
+    borderRadius: (THUMB_SIZE + 8) / 2,
     borderWidth: 2,
     borderColor: "#3DA9FC",
     padding: 2,
+    marginRight: 12,
+  },
+
+  cardMedia: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    resizeMode: "cover",
   },
 
   imagePlaceholder: {
     backgroundColor: "#E8E8E8",
   },
 
-  cardContent: {
+  textBlock: {
     flex: 1,
-    marginLeft: 10,
-    paddingRight: 6,
+    marginRight: 8,
   },
 
   title: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
     color: "#111111",
+    lineHeight: 20,
   },
 
-  dateTime: {
-    marginTop: 2,
+  subtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#8A8A8A",
+  },
+
+  whenLine: {
+    marginTop: 3,
     fontSize: 12,
     fontWeight: "600",
-    color: "#454545",
+    color: "#333333",
   },
 
-  distance: {
-    marginTop: 1,
-    fontSize: 12,
+  openText: {
+    fontSize: 13,
     fontWeight: "700",
-    color: "#111111",
+    color: "#1FA463",
   },
 
+  closedText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#D93636",
+  },
+
+  savePill: {
+    paddingVertical: 5,
+    paddingHorizontal: 15,
+    borderRadius: 24,
+    backgroundColor: "#EBEBED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // META ROW - spans the full card width
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 6,
+    marginTop: 10,
+    minHeight: META_HEIGHT,
   },
 
   tag: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: "#E1E4E8",
-    borderRadius: 20,
+    height: META_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: "#ececec",
+    borderRadius: META_HEIGHT / 2,
+  },
+
+  tagEmoji: {
+    fontSize: 12,
+    marginRight: 4,
   },
 
   tagText: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "500",
     color: "#222222",
   },
 
   attendeeContainer: {
+    height: META_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -286,9 +343,9 @@ const styles = StyleSheet.create({
   },
 
   attendeeAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: META_HEIGHT,
+    height: META_HEIGHT,
+    borderRadius: META_HEIGHT / 2,
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
     backgroundColor: "#EFEFEF",
@@ -305,43 +362,19 @@ const styles = StyleSheet.create({
   },
 
   attendeeMoreText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "700",
     color: "#FFFFFF",
   },
 
   overlappingAvatar: {
-    marginLeft: -6,
+    marginLeft: -15,
   },
 
   attendeeText: {
-    marginLeft: 6,
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#444444",
-  },
-
-  // Far-right controls
-  cardActions: {
-    alignSelf: "flex-start",
-    paddingTop: 2,
-  },
-
-  heartButton: {
-    minWidth: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 2,
-  },
-
-  likeCount: {
-    marginTop: 1,
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#555555",
-  },
-
-  likedCount: {
-    color: "#E53935",
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#333333",
   },
 });

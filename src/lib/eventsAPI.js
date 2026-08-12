@@ -45,6 +45,7 @@ function normalizeEvent(row, friendIds = []) {
     name: row.name,
     description: row.description,
     location: row.location,
+    venue_type: row.venue_type,
     city: row.city,
     state: row.state,
     country: row.country,
