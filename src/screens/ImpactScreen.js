@@ -1,12 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+import { View, Text, Image, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import CommunityTab from "../components/CommunityTab";
 
-const AVATAR_RING_SIZE = 76;
+const NATALIE_BITMOJI = require("../../assets/bitmoji-icons/natalie.png");
+const SILVER_MEDAL = require("../../assets/impact-assets/silvermetal.png");
+const SEAL_PET = require("../../assets/impact-assets/sealpet.png");
+const TREE_PLANTING_IMAGE = require("../../assets/impact-assets/treeplanting.png");
+const FOOD_DRIVE_IMAGE = require("../../assets/impact-assets/fooddrive.png");
+
+const AVATAR_RING_SIZE = 64;
 const AVATAR_RING_STROKE = 2.5;
 const AVATAR_RING_RADIUS = (AVATAR_RING_SIZE - AVATAR_RING_STROKE) / 2;
 const AVATAR_RING_CIRCUMFERENCE = 2 * Math.PI * AVATAR_RING_RADIUS;
@@ -45,27 +51,21 @@ const STATS = [
 const RECENT_IMPACT = [
   {
     id: "recent-1",
-    title: "Dockweiler Beach Cleanup",
-    date: "Jul 30, 2026",
-    hours: "2.5 hours",
+    title: "Tree Planting",
+    date: "August 27, 2026",
+    hours: "2 hours",
     organization: "Heal the Bay",
+    image: TREE_PLANTING_IMAGE,
   },
   {
     id: "recent-2",
     title: "Westchester Food Drive",
-    date: "Jul 18, 2026",
-    hours: null,
+    date: "August 18, 2026",
+    hours: "1.5 hours",
     organization: "Westchester Community Food Bank",
+    image: FOOD_DRIVE_IMAGE,
   },
 ];
-
-function ImagePlaceholder({ style }) {
-  return (
-    <View style={[styles.imagePlaceholder, style]}>
-      <Ionicons name="image-outline" size={20} color="#B0B0B0" />
-    </View>
-  );
-}
 
 export default function ImpactScreen() {
   const navigation = useNavigation();
@@ -129,9 +129,9 @@ export default function ImpactScreen() {
             <View style={styles.card}>
               <View style={styles.avatarRing}>
                 <ProgressRing progress={AVATAR_RING_PROGRESS} />
-                <ImagePlaceholder style={styles.avatarImage} />
+                <Image source={NATALIE_BITMOJI} style={styles.avatarImage} />
                 <View style={styles.avatarBadge}>
-                  <Text style={styles.avatarBadgeText}>2</Text>
+                  <Image source={SILVER_MEDAL} style={styles.avatarBadgeImage} />
                 </View>
               </View>
 
@@ -161,8 +161,8 @@ export default function ImpactScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.card}>
-              <ImagePlaceholder style={styles.rewardImage} />
+            <View style={[styles.card, styles.rewardCard]}>
+              <Image source={SEAL_PET} style={styles.rewardImage} />
               <View style={styles.rewardTextBlock}>
                 <Text style={styles.rewardEyebrow}>Next Unlock</Text>
                 <Text style={styles.rewardTitle}>Seal Bitmoji Pet</Text>
@@ -182,7 +182,7 @@ export default function ImpactScreen() {
 
             {RECENT_IMPACT.map((item) => (
               <View key={item.id} style={[styles.card, styles.recentCard]}>
-                <ImagePlaceholder style={styles.recentImage} />
+                <Image source={item.image} style={styles.recentImage} />
                 <View style={styles.recentTextBlock}>
                   <Text style={styles.recentTitle}>{item.title}</Text>
                   <Text style={styles.recentMeta}>
@@ -273,21 +273,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 18,
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 14,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
-
-  imagePlaceholder: {
-    backgroundColor: "#EAEAEA",
-    alignItems: "center",
+  rewardCard: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
     justifyContent: "center",
   },
 
   // Leader card
   avatarRing: {
-    width: 76,
-    height: 76,
+    width: 64,
+    height: 64,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -295,31 +299,28 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    resizeMode: "cover",
   },
   avatarBadge: {
     position: "absolute",
-    bottom: -2,
-    left: -2,
+    bottom: -5,
+    left: -3,
     width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#B0B0B0",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    height: 26,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFFFFF",
+  avatarBadgeImage: {
+    width: 22,
+    height: 26,
+    resizeMode: "contain",
   },
   leaderTextBlock: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 12,
   },
   leaderTitle: {
     fontSize: 17,
@@ -374,13 +375,13 @@ const styles = StyleSheet.create({
 
   // Reward card
   rewardImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 90,
+    height: 90,
+    borderRadius: 37,
+    resizeMode: "cover",
   },
   rewardTextBlock: {
-    flex: 1,
-    marginLeft: 16,
+    marginLeft: 28,
   },
   rewardEyebrow: {
     fontSize: 12,
@@ -405,9 +406,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   recentImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 15,
+    resizeMode: "cover",
   },
   recentTextBlock: {
     flex: 1,

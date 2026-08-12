@@ -1,20 +1,16 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const CONNECTIONS = [
-  { id: "1", name: "Nisha", username: "nishac", timesMet: 8 },
-  { id: "2", name: "Suzie Freeman", username: "suziefree", timesMet: 6 },
-  { id: "3", name: "Bridgette Wicks", username: "bridgettewicks", timesMet: 5 },
-];
+const MELISSA_BITMOJI = require("../../assets/bitmoji-icons/Melissa Lazenby_SEA.png");
+const KEZIAH_BITMOJI = require("../../assets/bitmoji-icons/Keziah Muyna_SEA.png");
+const VAUGHN_BITMOJI = require("../../assets/bitmoji-icons/Vaughn Alston_SEA.png");
 
-function ImagePlaceholder({ style }) {
-  return (
-    <View style={[styles.imagePlaceholder, style]}>
-      <Ionicons name="image-outline" size={18} color="#B0B0B0" />
-    </View>
-  );
-}
+const CONNECTIONS = [
+  { id: "1", name: "Melissa Lazenby", username: "melissalazer", timesMet: 8, avatar: MELISSA_BITMOJI },
+  { id: "2", name: "keziah muyna", username: "kezm", timesMet: 6, avatar: KEZIAH_BITMOJI },
+  { id: "3", name: "Vaughn", username: "vaughnnn", timesMet: 5, avatar: VAUGHN_BITMOJI },
+];
 
 export default function CommunityTab() {
   return (
@@ -33,7 +29,7 @@ export default function CommunityTab() {
               index !== CONNECTIONS.length - 1 && styles.rowDivider,
             ]}
           >
-            <ImagePlaceholder style={styles.avatar} />
+            <Image source={person.avatar} style={styles.avatar} />
 
             <View style={styles.textBlock}>
               <Text style={styles.name}>{person.name}</Text>
@@ -72,6 +68,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   row: {
@@ -85,15 +86,11 @@ const styles = StyleSheet.create({
     borderBottomColor: "#EAEAEA",
   },
 
-  imagePlaceholder: {
-    backgroundColor: "#EAEAEA",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    resizeMode: "cover",
   },
 
   textBlock: {
