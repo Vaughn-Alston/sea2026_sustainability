@@ -26,7 +26,7 @@ import ImpactIcon from "../../assets/pill-icons/impact.svg";
 import EventCard from "./EventCard";
 
 const HANDLE_HEIGHT = 24;
-const HEADER_ICON_SIZE = 20;
+const HEADER_ICON_SIZE = 30;
 const HEADER_ICON_CIRCLE = 44;
 
 // label + which data each tab reads, so the same sheet can show the event tabs or a saved-only view depending on which pill opened it
@@ -93,8 +93,8 @@ export default function EventList({
 
   const sheetRef = useRef(null);
 
-  const snapPoints = useMemo(() => [120 + HANDLE_HEIGHT, "50%", "90%"], []);
-
+  const snapPoints = useMemo(() => [80 + HANDLE_HEIGHT, "50%", "90%"], []);
+  
   const handleClosePress = useCallback(() => {
     sheetRef.current?.close();
   }, []);
@@ -141,7 +141,11 @@ export default function EventList({
           <View style={styles.headerLeft}>
             {/* circle behind the leaf, matches the mockup's icon chip */}
             <View style={styles.headerIconCircle}>
-              <ImpactIcon width={HEADER_ICON_SIZE} height={HEADER_ICON_SIZE} />
+              <ImpactIcon
+                width={HEADER_ICON_SIZE}
+                height={HEADER_ICON_SIZE}
+                style={{ marginLeft: 2, marginTop: 4.5 }}
+              />
             </View>
 
             <View>
@@ -253,7 +257,7 @@ const styles = StyleSheet.create({
   },
 
   handleIndicator: {
-    width: 40,
+    width: 35,
     height: 5,
     borderRadius: 3,
     backgroundColor: "#D9D9D9",
@@ -265,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingBottom: 14,
   },
 
   headerLeft: {
