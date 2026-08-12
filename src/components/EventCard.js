@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  Image,
-  Pressable,
-  StyleSheet,
-} from "react-native";
+import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
@@ -18,7 +12,8 @@ import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
  *   for both kinds — `event` rows show a date, `anytime` rows show Open Now.
  *
  *   heart = save, number next to it is how many people saved it
- *   rsvp lives on the event page now, so the card only carries the heart
+ *   the thumbnail always wears a blue story ring, snapchat-style - taps on it
+ *   just log for now
  */
 export default function EventCard({
   event,
@@ -72,21 +67,27 @@ export default function EventCard({
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      {/* Circular image on the far left */}
-      {cardImage ? (
-        <Image
-          source={
-            typeof cardImage === "string"
-              ? { uri: cardImage }
-              : cardImage
-          }
-          style={styles.cardMedia}
-        />
-      ) : (
-        <View style={[styles.cardMedia, styles.imagePlaceholder]}>
-          <Text style={styles.imagePlaceholderText}>IMG</Text>
-        </View>
-      )}
+      {/* Circular image on the far left - always wears the blue story ring */}
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation?.();
+          console.log("Open story", event?.id);
+        }}
+        style={styles.thumbRing}
+      >
+        {cardImage ? (
+          <Image
+            source={
+              typeof cardImage === "string" ? { uri: cardImage } : cardImage
+            }
+            style={styles.cardMedia}
+          />
+        ) : (
+          <View style={[styles.cardMedia, styles.imagePlaceholder]}>
+            <Text style={styles.imagePlaceholderText}>IMG</Text>
+          </View>
+        )}
+      </Pressable>
 
       {/* Main card information */}
       <View style={styles.cardContent}>
@@ -100,17 +101,11 @@ export default function EventCard({
           </Text>
         )}
 
-        {!!cardDistance && (
-          <Text style={styles.distance}>
-            {cardDistance}
-          </Text>
-        )}
+        {!!cardDistance && <Text style={styles.distance}>{cardDistance}</Text>}
 
         {!!cardTag && (
           <View style={styles.tag}>
-            <Text style={styles.tagText}>
-              {cardTag}
-            </Text>
+            <Text style={styles.tagText}>{cardTag}</Text>
           </View>
         )}
 
@@ -120,11 +115,11 @@ export default function EventCard({
               <Image
                 key={attendee.id ?? index}
                 source={
-                  typeof (attendee.avatar ?? attendee) === "string"
+                  typeof (attendee.image ?? attendee) === "string"
                     ? {
-                        uri: attendee.avatar ?? attendee,
+                        uri: attendee.image ?? attendee,
                       }
-                    : attendee.avatar ?? attendee
+                    : (attendee.image ?? attendee)
                 }
                 style={[
                   styles.attendeeAvatar,
@@ -135,9 +130,7 @@ export default function EventCard({
           </View>
 
           {cardAttendeeCount > 0 && (
-            <Text style={styles.attendeeText}>
-              {cardAttendeeCount} Going
-            </Text>
+            <Text style={styles.attendeeText}>{cardAttendeeCount} Going</Text>
           )}
         </View>
       </View>
@@ -145,7 +138,7 @@ export default function EventCard({
       {/* Actions on the far right */}
       <View style={styles.cardActions}>
         {/* heart saves the place - count is everyone who saved it
-          * comes from the db rather than local state */}
+         * comes from the db rather than local state */}
         <Pressable
           style={styles.heartButton}
           onPress={handleHeartPress}
@@ -199,6 +192,13 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 46,
     resizeMode: "cover",
+  },
+
+  thumbRing: {
+    borderRadius: 52,
+    borderWidth: 2.5,
+    borderColor: "#3DA9FC",
+    padding: 3,
   },
 
   imagePlaceholder: {

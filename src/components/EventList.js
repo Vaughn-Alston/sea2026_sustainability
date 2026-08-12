@@ -23,6 +23,13 @@ import EventCard from "./EventCard";
 
 const HANDLE_HEIGHT = 24;
 
+// label + which data each tab reads, so the same sheet can show the event tabs or a saved-only view depending on which pill opened it
+const TAB_CONFIG = {
+  events: { label: "Events", empty: "No upcoming events yet." },
+  anytime: { label: "Drop-In", empty: "No drop-in places yet." },
+  saved: { label: "Saved", empty: "No saved events yet." },
+};
+
 function SheetHandle() {
   return (
     <View style={styles.handleContainer}>
@@ -40,6 +47,9 @@ function SheetHandle() {
  *
  *   rsvp + saved ids are props too
  *   both persist to the db and the event page agrees with what the cards show.
+ *
+ *   `tabs` controls which tabs show - the Impacts pill opens the event tabs,
+ *   the Favorites pill opens a saved-only version of the same sheet.
  */
 export default function EventList({
   visible,
@@ -50,6 +60,8 @@ export default function EventList({
   userLocation,
   rsvpEventIds = [],
   savedPlaceIds = [],
+  tabs = ["events", "anytime"],
+  initialTab = "events",
   onToggleRsvp,
   onToggleSaved,
   onClose,
@@ -59,8 +71,8 @@ export default function EventList({
   const [page, setPage] = useState("planner");
   const [openModal, setOpenModal] = useState(null);
 
-  //// options: "events", "anytime", "saved" default towards events
-  const [selectedTab, setSelectedTab] = useState("events");
+  //// options: "events", "anytime", "saved" default towards the first tab shown
+  const [selectedTab, setSelectedTab] = useState(initialTab);
 
   // whichever tab is up drives both the header count and the cards below
   const visibleItems = useMemo(() => {
@@ -83,12 +95,12 @@ export default function EventList({
     onClose?.();
   }, [onClose]);
 
-  // reset to scheduled events tab after closed - tab you were on won't persist
+  // reset to whichever tab this sheet opens on after closed - tab you were on won't persist
   useEffect(() => {
     if (!visible) {
-      setSelectedTab("events");
+      setSelectedTab(initialTab);
     }
-  }, [visible]);
+  }, [visible, initialTab]);
 
   useEffect(() => {
     if (visible) {
@@ -131,70 +143,29 @@ export default function EventList({
 
         <View style={styles.tabRow}>
           {/* Here will start the start of my table with my categories */}
-
-          {/* Tab 1 */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("events")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "events" && styles.activeTabText,
-              ]}
+          {/* tabs come from the tabs prop so the same row renders the event tabs or just Saved */}
+          {tabs.map((tabId) => (
+            <Pressable
+              key={tabId}
+              style={styles.tabButton}
+              onPress={() => setSelectedTab(tabId)}
             >
-              Events
-            </Text>
+              <Text
+                style={[
+                  styles.tabText,
+                  selectedTab === tabId && styles.activeTabText,
+                ]}
+              >
+                {TAB_CONFIG[tabId].label}
+              </Text>
 
-            {selectedTab === "events" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 1 */}
-
-          {/* Tab 2 */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("anytime")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "anytime" && styles.activeTabText,
-              ]}
-            >
-              Drop-In
-            </Text>
-
-            {selectedTab === "anytime" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 2 */}
-
-          {/* Tab 3  - This will be the saved events */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("saved")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "saved" && styles.activeTabText,
-              ]}
-            >
-              Saved
-            </Text>
-
-            {selectedTab === "saved" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 3 */}
-
+              {selectedTab === tabId && (
+                <View style={styles.activeTabIndicator} />
+              )}
+            </Pressable>
+          ))}
           {/* The end of my tables */}
         </View>
-
 
         <BottomSheetScrollView
           contentContainerStyle={styles.cardContainer}
@@ -205,11 +176,7 @@ export default function EventList({
             <ActivityIndicator style={styles.loader} color="#8A8A8A" />
           ) : visibleItems.length === 0 ? (
             <Text style={styles.emptyText}>
-              {selectedTab === "events"
-                ? "No upcoming events yet."
-                : selectedTab === "anytime"
-                  ? "No drop-in places yet."
-                  : "No saved events yet."}
+              {TAB_CONFIG[selectedTab].empty}
             </Text>
           ) : (
             visibleItems.map((item) => (

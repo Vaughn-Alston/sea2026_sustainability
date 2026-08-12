@@ -280,18 +280,8 @@ const EventPageTab = forwardRef(function EventPageTab(
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <Pressable
-                style={[
-                  styles.avatarRing,
-                  event.hasStory && styles.avatarRingActive,
-                ]}
-                onPress={() =>
-                  console.log(
-                    "Open story",
-                    event.id,
-                    "hasStory:",
-                    !!event.hasStory,
-                  )
-                }
+                style={styles.avatarRing}
+                onPress={() => console.log("Open story", event.id)}
                 hitSlop={6}
               >
                 {event.thumbnail ? (
@@ -493,18 +483,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  avatarRing: {
+   avatarRing: {
     width: 72,
     height: 72,
     borderRadius: 36,
     borderWidth: 3,
-    borderColor: "transparent",
+    borderColor: "#3DA9FC",
     padding: 3,
     alignItems: "center",
     justifyContent: "center",
-  },
-  avatarRingActive: {
-    borderColor: "#3DA9FC",
   },
   avatar: {
     width: 60,

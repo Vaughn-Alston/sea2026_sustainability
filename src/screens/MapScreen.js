@@ -47,6 +47,9 @@ export default function MapScreen({ navigation }) {
   //Here will be the state variables for the list
   const [listVisible, setListVisible] = useState(false);
 
+  // separate flag for the saved list opened from the Favorites pill - it's the same EventList, just opened in saved-only mode
+  const [savedVisible, setSavedVisible] = useState(false);
+
   //This will handle the closing of the Modal
   const handleClose = () => {
     //close the party modal
@@ -186,7 +189,8 @@ export default function MapScreen({ navigation }) {
     focusOnItem(event);
   };
 
-  // tapping a different pin while a page is already open drops the current one first then raises the new one
+  // new: tapping a different pin while a page is already open drops the current
+  // new: one first, then raises the new one - mirrors the list -> page swap
   const handleSelectPin = useCallback(
     (item) => {
       if (selectedEvent && selectedEvent.id !== item.id) {
@@ -201,11 +205,16 @@ export default function MapScreen({ navigation }) {
 
   const handleSelectEvent = (event) => {
     setListVisible(false);
+    setSavedVisible(false);
     openEvent(event, { fromList: true });
   };
 
   const handleListClosed = () => {
     setListVisible(false);
+  };
+
+  const handleSavedClosed = () => {
+    setSavedVisible(false);
   };
 
   // Closing the event page brings back event list
@@ -219,6 +228,12 @@ export default function MapScreen({ navigation }) {
   };
 
   const handlePillSelect = (id) => {
+    // Favorites opens the saved-only sheet, Impacts opens the event tabs
+    if (id === "favorites") {
+      setSavedVisible(true);
+      return;
+    }
+
     if (id !== "impacts") {
       console.log("Pill pressed:", id);
       return;
@@ -343,6 +358,7 @@ export default function MapScreen({ navigation }) {
                 longitude: item.longitude,
               }}
               pinColor="green"
+              // swap straight to this event, bringing any open page down first
               onPress={() => handleSelectPin(item)}
             />
           ))}
@@ -350,7 +366,7 @@ export default function MapScreen({ navigation }) {
 
       {/* pills hide while off the map, or while either modal is open */}
       <MapPillBar
-        visible={isFocused && !selectedEvent && !listVisible}
+        visible={isFocused && !selectedEvent && !listVisible && !savedVisible}
         onSelect={handlePillSelect}
       />
 
@@ -397,6 +413,23 @@ export default function MapScreen({ navigation }) {
         //Here I am using the default function onClose() to pass false towards the component
         //This will give onClose() the ability to close the modal when called
         onClose={handleListClosed}
+      />
+
+      {/* same list opened from the Favorites pill, saved-only */}
+      <EventList
+        visible={savedVisible}
+        savedItems={savedItems}
+        loading={feedLoading}
+        userLocation={location}
+        rsvpEventIds={rsvpEventIds}
+        savedPlaceIds={savedPlaceIds}
+        tabs={["saved"]}
+        initialTab="saved"
+        onToggleRsvp={handleToggleRsvp}
+        onToggleSaved={handleToggleSaved}
+        onDirections={handleDirections}
+        onSelectEvent={handleSelectEvent}
+        onClose={handleSavedClosed}
       />
 
       <EventPageTab
