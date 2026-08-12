@@ -18,9 +18,8 @@ import {
 //this will allow me to use the bottom sheet component in my app
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 
-// same leaf used on the Impacts pill, so the sheet header matches the pill
-// that opened it
 import ImpactIcon from "../../assets/pill-icons/impact.svg";
+import FavoritesIcon from "../../assets/pill-icons/heart.svg";
 
 //I want to import my EventCard component so I can use it in my EventList component so Display Cards to hold my Data from file
 import EventCard from "./EventCard";
@@ -33,7 +32,7 @@ const HEADER_ICON_CIRCLE = 44;
 const TAB_CONFIG = {
   events: { label: "Events", empty: "No upcoming events yet." },
   anytime: { label: "Drop-In", empty: "No drop-in places yet." },
-  saved: { label: "Saved", empty: "No saved events yet." },
+  saved: { label: "Favorites", empty: "No favorites yet." },
 };
 
 function SheetHandle() {
@@ -83,6 +82,7 @@ export default function EventList({
 
   //// options: "events", "anytime", "saved" default towards the first tab shown
   const [selectedTab, setSelectedTab] = useState(initialTab);
+  const isFavorites = tabs.length === 1 && tabs[0] === "saved";
 
   // whichever tab is up drives both the header count and the cards below
   const visibleItems = useMemo(() => {
@@ -141,15 +141,22 @@ export default function EventList({
           <View style={styles.headerLeft}>
             {/* circle behind the leaf, matches the mockup's icon chip */}
             <View style={styles.headerIconCircle}>
-              <ImpactIcon
-                width={HEADER_ICON_SIZE}
-                height={HEADER_ICON_SIZE}
-                style={{ marginLeft: 2, marginTop: 4.5 }}
-              />
+              {/* new: heart on the favorites sheet, leaf otherwise */}
+              {isFavorites ? (
+                <FavoritesIcon
+                  width={25}
+                  height={25}
+                />
+              ) : (
+                <ImpactIcon width={HEADER_ICON_SIZE} height={HEADER_ICON_SIZE} style={{ marginLeft: 1, marginTop: 4 }}/>
+              )}
             </View>
 
             <View>
-              <Text style={styles.impactLabel}>Impacts</Text>
+              {/* new: header title follows which pill opened the sheet */}
+              <Text style={styles.impactLabel}>
+                {isFavorites ? "Favorites" : "Impacts"}
+              </Text>
               <Text style={styles.impactCount}>
                 {visibleItems.length} Places
               </Text>
@@ -157,9 +164,11 @@ export default function EventList({
           </View>
 
           <View style={styles.headerRight}>
-            <Pressable style={styles.viewImpactButton} onPress={onViewImpact}>
-              <Text style={styles.viewImpactText}>View Impact</Text>
-            </Pressable>
+            {!isFavorites && (
+              <Pressable style={styles.viewImpactButton} onPress={onViewImpact}>
+                <Text style={styles.viewImpactText}>View Impact</Text>
+              </Pressable>
+            )}
 
             <Pressable
               style={styles.closeButton}
