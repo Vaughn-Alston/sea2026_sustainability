@@ -238,3 +238,21 @@ export async function fetchMyFriends() {
   if (error) throw error;
   return data ?? [];
 }
+
+// the signed-in user's own profile row
+export async function fetchMyProfile() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, username, avatar")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}

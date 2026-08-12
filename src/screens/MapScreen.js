@@ -47,6 +47,7 @@ import {
   rsvpToEvent,
   cancelRsvp,
   toggleSavedImpact,
+  fetchMyProfile,
 } from "../lib/eventsAPI";
 
 // one green for the whole marker - sprout, thumbnail ring, and text
@@ -55,6 +56,8 @@ const MARKER_GREEN = "#2ECC4E";
 // friend strip sizing
 const FRIEND_AVATAR_SIZE = 44;
 
+const TOP_ROW_OFFSET = 2;
+const PILL_BAR_OFFSET = TOP_ROW_OFFSET + 50; // row height + gap
 // the 8 directional offsets that build the hard stroke
 const OUTLINE_OFFSETS = [
   [-1, -1],
@@ -135,6 +138,25 @@ function OutlinedText({
   );
 }
 
+function FadeRow({ visible, style, children }) {
+  const opacity = useSharedValue(visible ? 1 : 0);
+
+  useEffect(() => {
+    opacity.value = withTiming(visible ? 1 : 0, { duration: 150 });
+  }, [visible, opacity]);
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      style={[style, fadeStyle]}
+      pointerEvents={visible ? "auto" : "none"}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -157,6 +179,8 @@ export default function MapScreen({ navigation }) {
 
   // friends for the avatar strip along the bottom
   const [friends, setFriends] = useState([]);
+  // signed-in user's own row
+  const [profile, setProfile] = useState(null);
 
   // rsvp ids live up here so the card and the event page can't disagree
   const [rsvpEventIds, setRsvpEventIds] = useState([]);
@@ -216,13 +240,19 @@ export default function MapScreen({ navigation }) {
 
     (async () => {
       try {
-        const [{ events: eventRows, anytime }, rsvpIds, savedIds, friendRows] =
-          await Promise.all([
-            fetchImpactFeed(),
-            fetchMyRsvpEventIds(),
-            fetchMySavedImpactIds(),
-            fetchMyFriends(),
-          ]);
+        const [
+          { events: eventRows, anytime },
+          rsvpIds,
+          savedIds,
+          friendRows,
+          myProfile,
+        ] = await Promise.all([
+          fetchImpactFeed(),
+          fetchMyRsvpEventIds(),
+          fetchMySavedImpactIds(),
+          fetchMyFriends(),
+          fetchMyProfile(),
+        ]);
 
         if (cancelled) return;
 
@@ -231,6 +261,8 @@ export default function MapScreen({ navigation }) {
         setRsvpEventIds(rsvpIds);
         setSavedPlaceIds(savedIds);
         setFriends(friendRows);
+        setProfile(myProfile);
+        console.log("profile:", myProfile);
       } catch (error) {
         console.log("Impact feed failed to load", error.message);
       } finally {
@@ -521,9 +553,30 @@ export default function MapScreen({ navigation }) {
         ))}
       </MapView>
 
+      <FadeRow
+        visible={isFocused && !selectedEvent && !listVisible && !savedVisible}
+        style={[styles.topRow, { top: insets.top + TOP_ROW_OFFSET }]}
+      >
+        <PressableScale
+          style={[styles.profileButton, styles.shadow]}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          {profile?.avatar ? (
+            <Image
+              source={{ uri: profile.avatar }}
+              style={styles.profileAvatar}
+            />
+          ) : (
+            <View style={[styles.profileAvatar, styles.profileAvatarEmpty]} />
+          )}
+        </PressableScale>
+
+        <Text style={styles.cityLabel}>Santa Monica</Text>
+      </FadeRow>
       {/* pills hide while off the map, or while either modal is open */}
       <MapPillBar
         visible={isFocused && !selectedEvent && !listVisible && !savedVisible}
+        topOffset={PILL_BAR_OFFSET}
         onSelect={handlePillSelect}
       />
 
@@ -544,7 +597,6 @@ export default function MapScreen({ navigation }) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.friendStrip}
           >
-            {/* search - not wired up yet, scrolls with the rest */}
             <PressableScale style={[styles.circleButton, styles.shadow]}>
               <Ionicons name="search" size={20} color="#111111" />
             </PressableScale>
@@ -567,9 +619,7 @@ export default function MapScreen({ navigation }) {
               </PressableScale>
             ))}
 
-            <PressableScale
-              style={[styles.addFriendPill, styles.shadow]}
-            >
+            <PressableScale style={[styles.addFriendPill, styles.shadow]}>
               <Ionicons name="person-add-outline" size={19} color="#111111" />
               <Text style={styles.addFriendText}>Add Friend</Text>
             </PressableScale>
@@ -638,7 +688,7 @@ const styles = StyleSheet.create({
 
   recenterRow: {
     alignItems: "flex-end",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingBottom: 10,
   },
 
@@ -646,7 +696,7 @@ const styles = StyleSheet.create({
     width: FRIEND_AVATAR_SIZE,
     height: FRIEND_AVATAR_SIZE,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -663,7 +713,7 @@ const styles = StyleSheet.create({
   friendStrip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     gap: 10,
   },
   friendAvatarWrapper: {
@@ -671,7 +721,7 @@ const styles = StyleSheet.create({
     height: FRIEND_AVATAR_SIZE,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
   friendAvatar: {
     width: FRIEND_AVATAR_SIZE,
@@ -680,7 +730,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   friendAvatarEmpty: {
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
   addFriendPill: {
     flexDirection: "row",
@@ -689,7 +739,7 @@ const styles = StyleSheet.create({
     height: FRIEND_AVATAR_SIZE,
     paddingHorizontal: 20,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
   addFriendText: {
     fontSize: 16,
@@ -754,5 +804,36 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: MARKER_GREEN,
     marginLeft: 2,
+  },
+  topRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    zIndex: 2,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+  },
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    resizeMode: "cover",
+  },
+  profileAvatarEmpty: {
+    backgroundColor: "#D9D9D9",
+  },
+  cityLabel: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#111111",
   },
 });
