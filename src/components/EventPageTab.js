@@ -45,7 +45,7 @@ import {
 const HANDLE_HEIGHT = 24;
 // collapsed height lands just under the button row - everything scrolls now,
 // so this only decides how much shows before the user drags or scrolls
-const COLLAPSED_HEIGHT = 210;
+const COLLAPSED_HEIGHT = 190;
 const STORY_IMAGE_SIZE = 85;
 // stack avatars on the going card - a touch bigger than the list card's
 const STACK_AVATAR_SIZE = 34;
