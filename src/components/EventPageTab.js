@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
+import SendIcon from "../../assets/camera-icons/send.svg";
 
 import {
   formatEventWhen,
@@ -42,7 +43,13 @@ import {
 } from "../lib/eventsAPI";
 
 const HANDLE_HEIGHT = 24;
-const HEADER_HEIGHT = 200;
+// collapsed height lands just under the button row - everything scrolls now,
+// so this only decides how much shows before the user drags or scrolls
+const COLLAPSED_HEIGHT = 190;
+const STORY_IMAGE_SIZE = 85;
+// stack avatars on the going card - a touch bigger than the list card's
+const STACK_AVATAR_SIZE = 34;
+const MAX_STACK_AVATARS = 4;
 
 function SheetHandle() {
   return (
@@ -54,12 +61,15 @@ function SheetHandle() {
 
 /**
  * EventPageTab
- *   index 0 — collapsed: handle + title row + button row
- *   index 1 — half screen (opens on press)
- *   index 2 — full screen, scrollable for rest of details
+ *   index 0 — collapsed: title block + button row visible
+ *   index 1 — half screen
+ *   index 2 — full screen
+ *
+ *   everything lives in one scroll view, so the buttons scroll away with the
+ *   rest of the content rather than staying pinned
  */
 const EventPageTab = forwardRef(function EventPageTab(
-  { event, userLocation, onClose, onRsvpChange, onSavedChange },
+  { event, userLocation, navigation, onClose, onRsvpChange, onSavedChange },
   ref,
 ) {
   const sheetRef = useRef(null);
@@ -74,7 +84,7 @@ const EventPageTab = forwardRef(function EventPageTab(
   const [saved, setSaved] = useState(false);
 
   const snapPoints = useMemo(
-    () => [HEADER_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
+    () => [COLLAPSED_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
     [],
   );
 
@@ -102,8 +112,7 @@ const EventPageTab = forwardRef(function EventPageTab(
     }
   }, [event]);
 
-  // drop-ins have no attending rows so only scheduled events get counts
-  // load whether they're already saved instead
+  // scheduled rows load rsvp + counts, drop-ins load whether they're saved
   useEffect(() => {
     let cancelled = false;
 
@@ -147,34 +156,42 @@ const EventPageTab = forwardRef(function EventPageTab(
   const isEvent = event?.kind === "event";
   const hasRsvp = rsvpStatus != null;
 
-  // whichever value fills in the button for this kind of row
+  // whichever value fills in the primary button for this kind of row
   const actionActive = isEvent ? hasRsvp : saved;
 
   const when = isEvent
     ? formatEventWhen(event?.start_datetime, event?.end_datetime)
     : formatAnytimeWhen(event?.hours);
 
-  // estimate driving time to event
-  const driveTime = formatDriveTime(estimateDriveMinutes(userLocation, event));
+  // relative time gets its own color, so it's separate from the rest
+  // "in 1 month" on events, "Open Now" / "Closed" on drop-ins
+  const relativeText = isEvent
+    ? formatRelative(event?.start_datetime)
+    : formatOpenState(event?.hours);
 
-  // "In 2 Hrs · 6.9 miles · Playa del Rey, CA"
+  // closed drop-ins go red, everything else green
+  const isClosed = !isEvent && relativeText === "Closed";
+
+  // "340 mi · Santa Monica, CA" - everything after the relative time
   const metaLine = useMemo(() => {
     if (!event) return null;
 
     const parts = [
-      isEvent
-        ? formatRelative(event.start_datetime)
-        : formatOpenState(event.hours),
       formatDistance(distanceFromUser(userLocation, event)),
       formatPlace(event.city, event.state),
     ];
 
     return parts.filter(Boolean).join(" · ");
-  }, [event, isEvent, userLocation]);
+  }, [event, userLocation]);
 
-  // scheduled rows rsvp
-  // drop-ins save
-  // db trigger rejects rsvps on anytime rows so the two paths can't be shared
+  // "8.5 hr" for the drive-time button
+  const driveTime = formatDriveTime(estimateDriveMinutes(userLocation, event));
+
+  // friends attending, for the stack on the going card
+  const stackAttendees = (event?.attendees ?? []).slice(0, MAX_STACK_AVATARS);
+
+  // scheduled rows rsvp, drop-ins save - a db trigger rejects rsvps on
+  // anytime rows, so the two paths can't be shared
   const handleActionPress = useCallback(async () => {
     if (!event || busy) return;
 
@@ -185,7 +202,6 @@ const EventPageTab = forwardRef(function EventPageTab(
       setSaved(!previous);
 
       try {
-        // the toggle returns where it landed so two fast taps can't desync
         const nowSaved = await toggleSavedImpact(event.id);
         setSaved(nowSaved);
         onSavedChange?.(event, nowSaved);
@@ -257,6 +273,15 @@ const EventPageTab = forwardRef(function EventPageTab(
     );
   }, [event]);
 
+  // send button hands off to the SendTo screen
+  const handleSendPress = useCallback(() => {
+    if (!event) return;
+    navigation?.navigate("SendTo", {
+      eventId: event.id,
+      eventName: event.name,
+    });
+  }, [event, navigation]);
+
   // full street line for the details block
   const fullAddress = event
     ? [event.location, event.city, event.state].filter(Boolean).join(", ")
@@ -275,189 +300,221 @@ const EventPageTab = forwardRef(function EventPageTab(
     >
       {/* show nothing until caller sets event */}
       {event ? (
-        <View style={styles.sheetBody}>
-          {/* pinned header - stays visible at every snap point */}
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <Pressable
-                style={[
-                  styles.avatarRing,
-                  event.hasStory && styles.avatarRingActive,
-                ]}
-                onPress={() =>
-                  console.log(
-                    "Open story",
-                    event.id,
-                    "hasStory:",
-                    !!event.hasStory,
-                  )
-                }
-                hitSlop={6}
-              >
-                {event.thumbnail ? (
-                  <Image
-                    source={{ uri: event.thumbnail }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarFallback]} />
-                )}
-              </Pressable>
+        <BottomSheetScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.titleRow}>
+            {/* story thumbnail */}
+            <Pressable
+              style={styles.storyRing}
+              onPress={() => console.log("Open story", event.id)}
+              hitSlop={6}
+            >
+              {event.thumbnail ? (
+                <Image
+                  source={{ uri: event.thumbnail }}
+                  style={styles.storyImage}
+                />
+              ) : (
+                <View style={[styles.storyImage, styles.storyFallback]} />
+              )}
+            </Pressable>
 
-              <View style={styles.titleTextBlock}>
+            <View style={styles.rightColumn}>
+              {/* title left, close button pinned top right */}
+              <View style={styles.titleHeaderRow}>
                 <Text style={styles.title} numberOfLines={2}>
                   {event.name}
                 </Text>
 
-                {!!when && (
-                  <Text style={styles.subtitle} numberOfLines={1}>
-                    {when}
-                  </Text>
-                )}
+                <Pressable
+                  style={styles.closeButton}
+                  onPress={handleClose}
+                  hitSlop={10}
+                >
+                  <Ionicons name="close" size={20} color="#1A1A1A" />
+                </Pressable>
+              </View>
 
-                {!!metaLine && (
-                  <Text style={styles.location} numberOfLines={1}>
+              {/* details span the full width of this column */}
+              <View style={styles.detailsBlock}>
+                {!!when && <Text style={styles.subtitle}>{when}</Text>}
+
+                {(!!relativeText || !!metaLine) && (
+                  <Text style={styles.metaText}>
+                    {!!relativeText && (
+                      <Text
+                        style={
+                          isClosed ? styles.closedText : styles.relativeText
+                        }
+                      >
+                        {relativeText}
+                      </Text>
+                    )}
+                    {!!relativeText && !!metaLine && " · "}
                     {metaLine}
                   </Text>
                 )}
 
                 {!!event.organizationName && (
-                  <Text style={styles.hostLine} numberOfLines={1}>
-                    Hosted by{" "}
-                    <Text style={styles.hostName}>
-                      {event.organizationName}
+                  <View style={styles.hostRow}>
+                    <Text style={styles.hostLine}>
+                      Hosted by{" "}
+                      <Text style={styles.hostNameTitle}>
+                        {event.organizationName}
+                      </Text>
                     </Text>
-                  </Text>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color="#3E7A4E"
+                    />
+                  </View>
                 )}
               </View>
-
-              <Pressable
-                style={styles.closeButton}
-                onPress={handleClose}
-                hitSlop={10}
-              >
-                <Ionicons name="close" size={20} color="#1A1A1A" />
-              </Pressable>
-            </View>
-
-            <View style={styles.buttonRow}>
-              {/* scheduled events rsvp, drop-ins just save */}
-              <Pressable
-                style={[
-                  styles.button,
-                  styles.rsvpButton,
-                  actionActive ? styles.buttonSelected : styles.buttonNeutral,
-                ]}
-                onPress={handleActionPress}
-              >
-                <Ionicons
-                  name={actionActive ? "bookmark" : "bookmark-outline"}
-                  size={18}
-                  color={actionActive ? "#FFFFFF" : "#111111"}
-                />
-                <Text
-                  style={[
-                    styles.buttonLabel,
-                    actionActive && styles.buttonLabelSelected,
-                  ]}
-                >
-                  {isEvent
-                    ? hasRsvp
-                      ? "RSVP'D"
-                      : "RSVP"
-                    : saved
-                      ? "Saved"
-                      : "Save"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.button,
-                  styles.buttonNeutral,
-                  styles.directionsButton,
-                ]}
-              >
-                <Ionicons name="car" size={18} color="#111111" />
-                <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.button, styles.buttonAccent, styles.sendButton]}
-                onPress={() => console.log("Send", event.id)}
-              >
-                <Ionicons name="send" size={17} color="#111111" />
-              </Pressable>
             </View>
           </View>
 
-          {/* scrollable detail - only reachable once expanded */}
-          <BottomSheetScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {isEvent && summary.goingCount > 0 && (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>
-                  {summary.goingCount} going
-                  {summary.friendCount > 0 &&
-                    ` · ${summary.friendCount} friends attending`}
-                </Text>
-              </View>
-            )}
+          <View style={styles.buttonRow}>
+            {/* primary: rsvp for events (black when RSVP'D), save for drop-ins */}
+            <Pressable
+              style={[
+                styles.button,
+                styles.primaryButton,
+                actionActive ? styles.buttonBlack : styles.buttonNeutral,
+              ]}
+              onPress={handleActionPress}
+            >
+              <Ionicons
+                name={actionActive ? "bookmark" : "bookmark-outline"}
+                size={15}
+                color={actionActive ? "#FFFFFF" : "#111111"}
+              />
+              <Text
+                style={[
+                  styles.buttonLabel,
+                  actionActive && styles.buttonLabelLight,
+                ]}
+              >
+                {isEvent
+                  ? hasRsvp
+                    ? "RSVP'D"
+                    : "RSVP"
+                  : saved
+                    ? "Saved"
+                    : "Save"}
+              </Text>
+            </Pressable>
 
-            {!!event.description && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>About</Text>
-                <Text style={styles.sectionBody}>{event.description}</Text>
-              </View>
-            )}
+            {/* drive time */}
+            <Pressable
+              style={[styles.button, styles.buttonNeutral, styles.driveButton]}
+              onPress={handleDirectionsPress}
+            >
+              <Ionicons name="car" size={21} color="#000000" />
+              <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
+            </Pressable>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Event Details</Text>
+            {/* send - hands off to SendTo */}
+            {/* send - hands off to SendTo */}
+            <Pressable
+              style={[styles.button, styles.buttonAccent, styles.sendButton]}
+              onPress={handleSendPress}
+            >
+              {/* Replaced Ionicons with your custom SVG */}
+              <SendIcon width={19} height={19} />
+            </Pressable>
+          </View>
 
-              {!!when && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="time-outline" size={17} color="#7A7A7A" />
-                  <Text style={styles.detailText}>{when}</Text>
-                </View>
-              )}
+          {/* each section is its own white card on the grey sheet */}
+          {isEvent && summary.goingCount > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>
+                {summary.goingCount} going
+                {summary.friendCount > 0 &&
+                  ` · ${summary.friendCount} friends attending`}
+              </Text>
 
-              {!!fullAddress && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="location-outline" size={17} color="#7A7A7A" />
-                  <Text style={styles.detailText}>{fullAddress}</Text>
-                </View>
-              )}
-
-              {!!event.organizationName && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="people-outline" size={17} color="#7A7A7A" />
-                  <Text style={styles.detailText}>
-                    Hosted by {event.organizationName}
-                  </Text>
-                </View>
-              )}
-
-              {!!event.category && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="pricetag-outline" size={17} color="#7A7A7A" />
-                  <Text style={styles.detailText}>{event.category}</Text>
+              {/* same stack as the list card - friends only, grey when no avatar */}
+              {stackAttendees.length > 0 && (
+                <View style={styles.avatarGroup}>
+                  {stackAttendees.map((attendee, index) =>
+                    attendee.image ? (
+                      <Image
+                        key={attendee.id ?? index}
+                        source={{ uri: attendee.image }}
+                        style={[
+                          styles.attendeeAvatar,
+                          index > 0 && styles.overlappingAvatar,
+                        ]}
+                      />
+                    ) : (
+                      <View
+                        key={attendee.id ?? index}
+                        style={[
+                          styles.attendeeAvatar,
+                          styles.attendeeAvatarEmpty,
+                          index > 0 && styles.overlappingAvatar,
+                        ]}
+                      />
+                    ),
+                  )}
                 </View>
               )}
             </View>
-          </BottomSheetScrollView>
-        </View>
+          )}
+
+          {!!event.description && (
+            <View style={styles.card}>
+              <Text style={styles.cardHeading}>About</Text>
+              <Text style={styles.cardBody}>{event.description}</Text>
+            </View>
+          )}
+
+          <View style={styles.card}>
+            <Text style={styles.cardHeading}>Event Details</Text>
+
+            {!!when && (
+              <View style={styles.detailRow}>
+                <Ionicons name="time-outline" size={17} color="#000000" />
+                <Text style={styles.detailText}>{when}</Text>
+              </View>
+            )}
+
+            {!!fullAddress && (
+              <View style={styles.detailRow}>
+                <Ionicons name="location-outline" size={17} color="#000000" />
+                <Text style={styles.detailText}>{fullAddress}</Text>
+              </View>
+            )}
+
+            {!!event.organizationName && (
+              <View style={styles.detailRow}>
+                <Ionicons name="people-outline" size={17} color="#000000" />
+
+                <Text style={styles.detailText}>
+                  Hosted by{" "}
+                  <Text style={styles.hostNameDetails}>
+                    {event.organizationName}
+                  </Text>{" "}
+                  <Ionicons name="checkmark-circle" size={13} color="#3E7A4E" />
+                </Text>
+              </View>
+            )}
+          </View>
+        </BottomSheetScrollView>
       ) : null}
     </BottomSheet>
   );
 });
 
 const styles = StyleSheet.create({
+  // grey sheet so the white section cards read as cards
   sheetBackground: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: "#F7F7F9",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
   },
   sheetShadow: {
     shadowColor: "#000",
@@ -465,9 +522,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOpacity: 0.12,
     elevation: 12,
-  },
-  sheetBody: {
-    flex: 1,
   },
 
   // Handle
@@ -483,151 +537,176 @@ const styles = StyleSheet.create({
     backgroundColor: "#D9D9D9",
   },
 
-  // Pinned header
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 18,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 48,
   },
+
+  // Title block
   titleRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    paddingHorizontal: 4,
+    width: "100%",
   },
-  avatarRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    borderColor: "transparent",
-    padding: 3,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarRingActive: {
+  storyRing: {
+    borderRadius: (STORY_IMAGE_SIZE + 8) / 2,
+    borderWidth: 2,
     borderColor: "#3DA9FC",
+    padding: 2,
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  storyImage: {
+    width: STORY_IMAGE_SIZE,
+    height: STORY_IMAGE_SIZE,
+    borderRadius: STORY_IMAGE_SIZE / 2,
+    resizeMode: "cover",
   },
-  avatarFallback: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F0F0F0",
+  storyFallback: {
+    backgroundColor: "#E8E8E8",
   },
-  titleTextBlock: {
+  rightColumn: {
     flex: 1,
+    minWidth: 0,
     marginLeft: 14,
-    marginRight: 8,
+  },
+  titleHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    minWidth: 0,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#111111",
-  },
-  subtitle: {
-    marginTop: 3,
-    fontSize: 15,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 18,
     fontWeight: "600",
-    color: "#3A3A3A",
-  },
-  location: {
-    marginTop: 4,
-    fontSize: 15,
-    color: "#7A7A7A",
-  },
-  hostLine: {
-    marginTop: 3,
-    fontSize: 14,
-    color: "#7A7A7A",
-  },
-  hostName: {
     color: "#111111",
-    fontWeight: "600",
-    textDecorationLine: "underline",
+    marginRight: 8,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F0F0F0",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#EBEBED",
+  },
+  detailsBlock: {
+    marginTop: 1,
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#111111",
+  },
+  metaText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#8A8A8A",
+  },
+  relativeText: {
+    color: "#018850",
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  closedText: {
+    color: "#FD2646",
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  hostRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 2,
+  },
+  hostLine: {
+    fontSize: 12,
+    color: "#8A8A8A",
+  },
+  hostNameTitle: {
+    color: "#111111",
+    textDecorationLine: "underline",
+  },
+  hostNameDetails: {
+    color: "#646567",
   },
 
   // Button row
   buttonRow: {
     flexDirection: "row",
-    marginTop: 20,
+    marginTop: 18,
+    marginBottom: 18,
+    paddingHorizontal: 4,
     gap: 10,
   },
   button: {
-    height: 52,
+    paddingVertical: 10,
     borderRadius: 100,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
+    gap: 4,
   },
   buttonNeutral: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#EBEBED",
   },
-  buttonSelected: {
+  buttonBlack: {
     backgroundColor: "#111111",
   },
   buttonAccent: {
     backgroundColor: "#FFFC00",
   },
-  rsvpButton: {
+  primaryButton: {
     flex: 1,
   },
-  directionsButton: {
-    flex: 1.3,
+  driveButton: {
+    flex: 1,
   },
   sendButton: {
     flex: 0.8,
   },
   buttonLabel: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: "#111111",
   },
-  buttonLabelSelected: {
+  buttonLabelLight: {
     color: "#FFFFFF",
   },
 
-  // Scrollable detail
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 48,
-  },
-  section: {
-    marginBottom: 22,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9A9A9A",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  sectionBody: {
-    fontSize: 16,
-    lineHeight: 23,
-    color: "#2A2A2A",
-  },
+  // white section cards - same treatment as EventCard
   card: {
-    backgroundColor: "#F7F7F9",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#111111",
+  },
+  cardHeading: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111111",
+    marginBottom: 2,
+  },
+  cardBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#2A2A2A",
   },
   detailRow: {
     flexDirection: "row",
@@ -637,8 +716,29 @@ const styles = StyleSheet.create({
   },
   detailText: {
     flex: 1,
-    fontSize: 15,
-    color: "#2A2A2A",
+    fontSize: 14,
+    color: "#000000",
+  },
+
+  // avatar stack on the going card - mirrors the list card's stack
+  avatarGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  attendeeAvatar: {
+    width: STACK_AVATAR_SIZE,
+    height: STACK_AVATAR_SIZE,
+    borderRadius: STACK_AVATAR_SIZE / 2,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+    backgroundColor: "#EFEFEF",
+  },
+  attendeeAvatarEmpty: {
+    backgroundColor: "#D9D9D9",
+  },
+  overlappingAvatar: {
+    marginLeft: -15,
   },
 });
 
