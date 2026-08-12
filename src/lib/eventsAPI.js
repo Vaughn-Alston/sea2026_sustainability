@@ -224,3 +224,17 @@ export async function fetchMySavedImpactIds() {
     typeof row === "object" ? row.impact : row,
   );
 }
+
+// friend rows for the avatar strip on the map
+export async function fetchMyFriends() {
+  const friendIds = await fetchMyFriendIds();
+  if (friendIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, username, avatar")
+    .in("id", friendIds);
+
+  if (error) throw error;
+  return data ?? [];
+}
