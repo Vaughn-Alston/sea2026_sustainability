@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   // Padding lives here rather than on the ScrollView so the pill shadows aren't clipped at the edges of the scroll area
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 8,
     alignItems: "center",

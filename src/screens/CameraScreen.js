@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import MarkPopUp from "../components/MarkPopUp";
+import { useIsFocused } from "@react-navigation/native";
 
 const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
 
@@ -21,11 +23,43 @@ const RECORD_ICON = require("../../assets/camera-icons/record.png");
 const HD_ICON = require("../../assets/camera-icons/hd.png");
 const ARROW_ICON = require("../../assets/camera-icons/arrow.png");
 
+const EDIT_ICONS = [
+  [
+    { id: "text", source: require("../../assets/camera-icons/edit-tools/text.png"), size: 25 },
+    { id: "draw", source: require("../../assets/camera-icons/edit-tools/draw.png"), size: 23 },
+    { id: "sticker", source: require("../../assets/camera-icons/edit-tools/sticker.png"), size: 23 },
+    { id: "scissors", source: require("../../assets/camera-icons/edit-tools/scissors.png"), size: 23 },
+  ],
+  [
+    { id: "music", source: require("../../assets/camera-icons/edit-tools/music.png"), size: 25 },
+    { id: "facescan", source: require("../../assets/camera-icons/edit-tools/facescan.png"), size: 26 },
+    { id: "smiley", source: require("../../assets/camera-icons/edit-tools/smiley.png"), size: 26 },
+    { id: "enhance", source: require("../../assets/camera-icons/edit-tools/enhance.png"), large: true },
+  ],
+  [
+    { id: "wand", source: require("../../assets/camera-icons/edit-tools/wand.png"), size: 25 },
+    { id: "eraser", source: require("../../assets/camera-icons/edit-tools/eraser.png"), size: 24 },
+    { id: "paperclip", source: require("../../assets/camera-icons/edit-tools/paperclip.png"), size: 26 },
+    { id: "crop", source: require("../../assets/camera-icons/edit-tools/crop.png"), size: 25 },
+    { id: "timer", source: require("../../assets/camera-icons/edit-tools/timer.png"), size: 24 },
+  ],
+];
+
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
   const [photoUri, setPhotoUri] = useState(null);
+  const [photoTakenAt, setPhotoTakenAt] = useState(null);
+  const [markPopupVisible, setMarkPopupVisible] = useState(false);
   const cameraRef = useRef(null);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      setPhotoUri(null);
+      setPhotoTakenAt(null);
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -39,7 +73,10 @@ export default function CameraScreen({ navigation }) {
     if (!cameraRef.current) return;
 
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-    if (photo) setPhotoUri(photo.uri);
+    if (photo) {
+      setPhotoUri(photo.uri);
+      setPhotoTakenAt(new Date());
+    }
   };
 
   if (!permission) return <View style={styles.container} />;
@@ -61,15 +98,39 @@ export default function CameraScreen({ navigation }) {
         <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} />
         <SafeAreaView style={styles.overlay}>
           <TouchableOpacity style={styles.closeButton} onPress={() => setPhotoUri(null)}>
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Ionicons name="close" size={26} color="#fff" />
           </TouchableOpacity>
+
+          <View style={styles.editIconsRail}>
+            {EDIT_ICONS.map((group, groupIndex) => (
+              <View
+                key={groupIndex}
+                style={[
+                  styles.editIconsGroup,
+                  groupIndex !== EDIT_ICONS.length - 1 && styles.editIconsGroupSpacing,
+                ]}
+              >
+                {group.map((icon) => (
+                  <Image
+                    key={icon.id}
+                    source={icon.source}
+                    style={[
+                      styles.editIcon,
+                      { width: icon.large ? 34 : icon.size, height: icon.large ? 34 : icon.size },
+                    ]}
+                    resizeMode="contain"
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
 
           <Image source={CLEANUP_STAMP} style={styles.cleanupStamp} resizeMode="contain" />
 
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.darkActionButton}
-              onPress={() => {}}
+              onPress={() => setMarkPopupVisible(true)}
             >
               <View style={styles.saveSymbol}>
                 <Ionicons name="arrow-down" size={27} color="#fff" />
@@ -84,13 +145,24 @@ export default function CameraScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sendButton}
-              onPress={() => navigation.navigate("SendTo", { photoUri })}
+              onPress={() => navigation.navigate("SendTo", { photoUri, photoTakenAt })}
             >
               <Text style={styles.sendButtonText}>Send To</Text>
               <Ionicons name="send" size={24} color="#111" />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+
+        <MarkPopUp
+          visible={markPopupVisible}
+          date={photoTakenAt || new Date()}
+          photoUri={photoUri}
+          onDone={() => setMarkPopupVisible(false)}
+          onViewImpact={() => {
+            setMarkPopupVisible(false);
+            navigation.navigate("Impact");
+          }}
+        />
       </View>
     );
   }
@@ -184,35 +256,35 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   topIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
   notifIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     transform: [{ translateX: -4 }],
   },
   friendIcon: {
-    width: 45,
-    height: 45,
-    transform: [{ translateY: -9 }, { translateX: 6 }],
+    width: 40,
+    height: 40,
+    transform: [{ translateY: -8 }, { translateX: 5 }],
   },
   rightRail: {
     position: "absolute",
-    top: 125,
-    right: 12,
+    top: 123,
+    right: 14,
     alignItems: "center",
   },
   railButton: {
-    marginBottom: 26,
+    marginBottom: 23,
   },
   railIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
   arrowIcon: {
-    width: 32,
-    height: 32,
+    width: 29,
+    height: 29,
   },
   captureArea: {
     position: "absolute",
@@ -240,14 +312,21 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginTop: 12,
     marginLeft: 18,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "700",
+  editIconsRail: {
+    position: "absolute",
+    top: 60,
+    right: 16,
+    alignItems: "center",
+  },
+  editIconsGroup: {
+    alignItems: "center",
+  },
+  editIconsGroupSpacing: {
+    marginBottom: 5,
+  },
+  editIcon: {
+    marginBottom: 20,
   },
   cleanupStamp: {
     position: "absolute",

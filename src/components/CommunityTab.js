@@ -1,22 +1,38 @@
-import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const CONNECTIONS = [
-  { id: "1", name: "Nisha", username: "nishac", timesMet: 8 },
-  { id: "2", name: "Suzie Freeman", username: "suziefree", timesMet: 6 },
-  { id: "3", name: "Bridgette Wicks", username: "bridgettewicks", timesMet: 5 },
-];
+import { supabase } from "../lib/supabase";
 
-function ImagePlaceholder({ style }) {
-  return (
-    <View style={[styles.imagePlaceholder, style]}>
-      <Ionicons name="image-outline" size={18} color="#B0B0B0" />
-    </View>
-  );
-}
+const CONNECTION_USERNAMES = ["shawn", "sabrina", "jade"];
+const TIMES_MET = { shawn: 8, sabrina: 6, jade: 5 };
+
 
 export default function CommunityTab() {
+  const [connections, setConnections] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, username, avatar")
+        .in("username", CONNECTION_USERNAMES);
+
+      if (error) {
+        console.log("Connections failed to load", error.message);
+        return;
+      }
+
+      if (!cancelled) setConnections(data ?? []);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.introText}>
@@ -25,20 +41,26 @@ export default function CommunityTab() {
       </Text>
 
       <View style={styles.card}>
-        {CONNECTIONS.map((person, index) => (
+        {connections.map((person, index) => (
           <View
             key={person.id}
             style={[
               styles.row,
-              index !== CONNECTIONS.length - 1 && styles.rowDivider,
+              index !== connections.length - 1 && styles.rowDivider,
             ]}
           >
-            <ImagePlaceholder style={styles.avatar} />
+            {person.avatar ? (
+              <Image source={{ uri: person.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarEmpty]} />
+            )}
 
             <View style={styles.textBlock}>
-              <Text style={styles.name}>{person.name}</Text>
+              <Text style={styles.name}>{person.username}</Text>
               <Text style={styles.username}>{person.username}</Text>
-              <Text style={styles.metLabel}>MET {person.timesMet} TIMES</Text>
+              <Text style={styles.metLabel}>
+                MET {TIMES_MET[person.username] ?? 3} TIMES
+              </Text>
             </View>
 
             <Pressable style={styles.addButton}>
@@ -55,7 +77,6 @@ export default function CommunityTab() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -72,6 +93,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   row: {
@@ -85,15 +111,14 @@ const styles = StyleSheet.create({
     borderBottomColor: "#EAEAEA",
   },
 
-  imagePlaceholder: {
-    backgroundColor: "#EAEAEA",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    resizeMode: "cover",
+  },
+  avatarEmpty: {
+    backgroundColor: "#D9D9D9",
   },
 
   textBlock: {

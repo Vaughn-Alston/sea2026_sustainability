@@ -15,13 +15,27 @@ import {
   ActivityIndicator,
 } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
+
 //this will allow me to use the bottom sheet component in my app
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+
+import ImpactIcon from "../../assets/pill-icons/impact.svg";
+import FavoritesIcon from "../../assets/pill-icons/heart.svg";
 
 //I want to import my EventCard component so I can use it in my EventList component so Display Cards to hold my Data from file
 import EventCard from "./EventCard";
 
 const HANDLE_HEIGHT = 24;
+const HEADER_ICON_SIZE = 30;
+const HEADER_ICON_CIRCLE = 44;
+
+// label + which data each tab reads, so the same sheet can show the event tabs or a saved-only view depending on which pill opened it
+const TAB_CONFIG = {
+  events: { label: "Events", empty: "No upcoming events yet." },
+  anytime: { label: "Drop-In", empty: "No drop-in places yet." },
+  saved: { label: "Favorites", empty: "No favorites yet." },
+};
 
 function SheetHandle() {
   return (
@@ -40,6 +54,12 @@ function SheetHandle() {
  *
  *   rsvp + saved ids are props too
  *   both persist to the db and the event page agrees with what the cards show.
+ *
+ *   `tabs` controls which tabs show - the Impacts pill opens the event tabs,
+ *   the Favorites pill opens a saved-only version of the same sheet.
+ *
+ *   `onViewImpact` fires the green button in the header - MapScreen wires it
+ *   to navigation so this component doesn't need to know how routing works.
  */
 export default function EventList({
   visible,
@@ -50,17 +70,21 @@ export default function EventList({
   userLocation,
   rsvpEventIds = [],
   savedPlaceIds = [],
+  tabs = ["events", "anytime"],
+  initialTab = "events",
   onToggleRsvp,
   onToggleSaved,
   onClose,
   onSelectEvent,
   onDirections,
+  onViewImpact,
 }) {
   const [page, setPage] = useState("planner");
   const [openModal, setOpenModal] = useState(null);
 
-  //// options: "events", "anytime", "saved" default towards events
-  const [selectedTab, setSelectedTab] = useState("events");
+  //// options: "events", "anytime", "saved" default towards the first tab shown
+  const [selectedTab, setSelectedTab] = useState(initialTab);
+  const isFavorites = tabs.length === 1 && tabs[0] === "saved";
 
   // whichever tab is up drives both the header count and the cards below
   const visibleItems = useMemo(() => {
@@ -71,7 +95,7 @@ export default function EventList({
 
   const sheetRef = useRef(null);
 
-  const snapPoints = useMemo(() => [100 + HANDLE_HEIGHT, "50%", "90%"], []);
+  const snapPoints = useMemo(() => [80 + HANDLE_HEIGHT, "50%", "90%"], []);
 
   const handleClosePress = useCallback(() => {
     sheetRef.current?.close();
@@ -83,12 +107,12 @@ export default function EventList({
     onClose?.();
   }, [onClose]);
 
-  // reset to scheduled events tab after closed - tab you were on won't persist
+  // reset to whichever tab this sheet opens on after closed - tab you were on won't persist
   useEffect(() => {
     if (!visible) {
-      setSelectedTab("events");
+      setSelectedTab(initialTab);
     }
-  }, [visible]);
+  }, [visible, initialTab]);
 
   useEffect(() => {
     if (visible) {
@@ -113,88 +137,73 @@ export default function EventList({
       onClose={handleSheetClose}
     >
       <View style={styles.drawer}>
+        {/* header stays put at every snap point - icon + count on the left,
+            View Impact + close on the right, matches the collapsed mockup */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.impactLabel}>Impact</Text>
+          <View style={styles.headerLeft}>
+            {/* circle behind the leaf, matches the mockup's icon chip */}
+            <View style={styles.headerIconCircle}>
+              {/* new: heart on the favorites sheet, leaf otherwise */}
+              {isFavorites ? (
+                <FavoritesIcon width={25} height={25} />
+              ) : (
+                <ImpactIcon
+                  width={HEADER_ICON_SIZE}
+                  height={HEADER_ICON_SIZE}
+                  style={{ marginLeft: 1, marginTop: 4 }}
+                />
+              )}
+            </View>
 
-            <Text style={styles.impactCount}>{visibleItems.length}</Text>
+            <View>
+              <Text style={styles.impactLabel}>
+                {isFavorites ? "Favorites" : "Impacts"}
+              </Text>
+              <Text style={styles.impactCount}>
+                {visibleItems.length} Places
+              </Text>
+            </View>
           </View>
 
-          <Pressable
-            style={styles.closeButton}
-            onPress={handleClosePress}
-            hitSlop={10}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
-          </Pressable>
+          <View style={styles.headerRight}>
+            {!isFavorites && (
+              <Pressable style={styles.viewImpactButton} onPress={onViewImpact}>
+                <Text style={styles.viewImpactText}>View Impact</Text>
+              </Pressable>
+            )}
+
+            <Pressable
+              style={styles.closeButton}
+              onPress={handleClosePress}
+              hitSlop={10}
+            >
+              <Ionicons name="close" size={18} color="#111111" />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.tabRow}>
           {/* Here will start the start of my table with my categories */}
-
-          {/* Tab 1 */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("events")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "events" && styles.activeTabText,
-              ]}
+          {/* tabs come from the tabs prop so the same row renders the event tabs or just Saved
+              text-only now - no underline, active tab is just bolder/darker */}
+          {tabs.map((tabId) => (
+            <Pressable
+              key={tabId}
+              style={styles.tabButton}
+              onPress={() => setSelectedTab(tabId)}
             >
-              Events
-            </Text>
-
-            {selectedTab === "events" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 1 */}
-
-          {/* Tab 2 */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("anytime")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "anytime" && styles.activeTabText,
-              ]}
-            >
-              Drop-In
-            </Text>
-
-            {selectedTab === "anytime" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 2 */}
-
-          {/* Tab 3  - This will be the saved events */}
-          <Pressable
-            style={styles.tabButton}
-            onPress={() => setSelectedTab("saved")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "saved" && styles.activeTabText,
-              ]}
-            >
-              Saved
-            </Text>
-
-            {selectedTab === "saved" && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </Pressable>
-          {/* End of Tab 3 */}
-
+              <Text
+                style={[
+                  styles.tabText,
+                  selectedTab === tabId && styles.activeTabText,
+                ]}
+              >
+                {TAB_CONFIG[tabId].label}
+              </Text>
+            </Pressable>
+          ))}
           {/* The end of my tables */}
         </View>
-
 
         <BottomSheetScrollView
           contentContainerStyle={styles.cardContainer}
@@ -205,11 +214,7 @@ export default function EventList({
             <ActivityIndicator style={styles.loader} color="#8A8A8A" />
           ) : visibleItems.length === 0 ? (
             <Text style={styles.emptyText}>
-              {selectedTab === "events"
-                ? "No upcoming events yet."
-                : selectedTab === "anytime"
-                  ? "No drop-in places yet."
-                  : "No saved events yet."}
+              {TAB_CONFIG[selectedTab].empty}
             </Text>
           ) : (
             visibleItems.map((item) => (
@@ -263,86 +268,105 @@ const styles = StyleSheet.create({
   },
 
   handleIndicator: {
-    width: 40,
+    width: 35,
     height: 5,
     borderRadius: 3,
     backgroundColor: "#D9D9D9",
   },
 
   header: {
-    minHeight: 70,
+    minHeight: 64,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 6,
+    paddingBottom: 14,
+  },
+
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  headerIconCircle: {
+    width: HEADER_ICON_CIRCLE,
+    height: HEADER_ICON_CIRCLE,
+    borderRadius: HEADER_ICON_CIRCLE / 2,
+    backgroundColor: "#ECEDEF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
 
   impactLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
-    color: "#777777",
-  },
-
-  impactCount: {
-    marginTop: 2,
-    fontSize: 26,
-    fontWeight: "800",
     color: "#111111",
   },
 
-  closeButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  impactCount: {
+    marginTop: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#8A8A8A",
+  },
+
+  viewImpactButton: {
+    height: 32,
+    paddingHorizontal: 24,
+    marginRight: 6,
+    borderRadius: 100,
+    backgroundColor: "#2ECC4E",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  viewImpactText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111111",
+  },
+
+   closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EBEBED",
   },
 
-  closeButtonText: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#000000",
-  },
-
   tabRow: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E2E2",
+    paddingTop: 4,
+    paddingBottom: 8,
   },
 
   tabButton: {
-    marginRight: 28,
-    paddingTop: 12,
-    paddingBottom: 10,
+    marginRight: 20,
   },
 
   tabText: {
-    fontSize: 19,
+    fontSize: 15,
     fontWeight: "600",
     color: "#8A8A8A",
   },
 
   activeTabText: {
-    fontWeight: "800",
+    fontWeight: "600",
     color: "#111111",
-  },
-
-  activeTabIndicator: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    left: 0,
-    height: 3,
-    borderRadius: 3,
-    backgroundColor: "#111111",
   },
 
   cardContainer: {
     paddingHorizontal: 12,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 50,
   },
 
@@ -353,7 +377,7 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 20,
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#777777",
   },
