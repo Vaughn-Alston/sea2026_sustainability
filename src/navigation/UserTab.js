@@ -154,9 +154,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     backgroundColor: "white",
-    borderRadius: 24,
     padding: 16,
     bottom: 0,
+    borderTopWidth: 1, 
+    borderTopColor: "#E5E5E5",
   },
   cameraContainer: {
     backgroundColor: "#000",
@@ -164,7 +165,6 @@ const styles = StyleSheet.create({
   grayRectangle: {
     flexDirection: "row",
     justifyContent: "space-around",
-    backgroundColor: colors.belowPage,
     borderRadius: 100,
     height: 48,
   },
