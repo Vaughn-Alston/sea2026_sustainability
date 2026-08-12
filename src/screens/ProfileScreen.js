@@ -95,6 +95,7 @@ export default function ProfileScreen() {
   const profileSheetRef = useRef(null);
 
   const [eventListVisible, setEventListVisible] = useState(false);
+  const [profileSheetIndex, setProfileSheetIndex] = useState(1);
   const profileSnapPoints = useMemo(
     () => [110 + HANDLE_HEIGHT, "50%", "90%"],
     [],
@@ -173,11 +174,24 @@ export default function ProfileScreen() {
             }}
           />
         </Pressable>
+
+        {profileSheetIndex === 1 && (
+          <View style={styles.heroActions}>
+            <Pressable style={styles.heroActionButton}>
+              <Text style={styles.heroActionText}>My Account</Text>
+            </Pressable>
+
+            <Pressable style={styles.heroActionButton}>
+              <Text style={styles.heroActionText}>Profile Picture</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <BottomSheet
         ref={profileSheetRef}
         index={1}
+        onChange={setProfileSheetIndex}
         snapPoints={profileSnapPoints}
         enableDynamicSizing={false}
         enableHandlePanningGesture
@@ -221,6 +235,24 @@ export default function ProfileScreen() {
               <View style={styles.tag}>
                 <Text style={styles.tagText}>💜 Cancer</Text>
               </View>
+
+              <Pressable
+                style={styles.tag}
+                onPress={() => navigation.navigate("Rewards")}
+              >
+                <Text style={styles.tagText}>🥉 Rewards</Text>
+              </Pressable>
+
+               <View style={styles.tag}>
+                  {/* Here I will make a add topic chat button */}
+                <Text style={styles.tagText}>:bronzemedal:  Cancer</Text>
+              </View>
+
+              <View style={styles.tag}>
+                  {/* Here I will make a add topic chat button */}
+                <Text style={styles.tagText}>:bronzemedal:  Cancer</Text>
+              </View>
+
             </View>
 
             {/* Black and gold feature card */}
@@ -339,6 +371,32 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     resizeMode: "contain",
+  },
+
+  heroActions: {
+    position: "absolute",
+    right: 18,
+    bottom: "52%",
+    left: 18,
+    flexDirection: "row",
+  },
+
+  heroActionButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    borderRadius: 22,
+    backgroundColor: "transparent",
+    marginHorizontal: 5,
+  },
+
+  heroActionText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
   sheetBackground: {
