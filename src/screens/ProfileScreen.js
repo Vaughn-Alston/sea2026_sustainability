@@ -1,22 +1,10 @@
-import React, {
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  Image,
-  Text,
-  View,
-  Button,
-  StyleSheet,
-  Pressable,
-} from "react-native";
-import BottomSheet, {
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet";
+import React, { useMemo, useRef, useState } from "react";
+import { Image, Text, View, Button, StyleSheet, Pressable } from "react-native";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 
 import { useNavigation } from "@react-navigation/native";
 
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../utils/hooks/supabase";
 import { useAuthentication } from "../../utils/hooks/useAuthentication";
 
@@ -26,6 +14,7 @@ const HERO_IMAGE_URI =
   "/Users/valston/Desktop/SEA - Project/final_showcase/sea2026_sustainability/assets/snapchat/nataline.png";
 
 const HANDLE_HEIGHT = 24;
+const HERO_IMAGE = require("../../assets/profile/nataliefull.png");
 
 function SheetHandle() {
   return (
@@ -64,8 +53,6 @@ const storyItems = [
 ];
 //end of Array for the story section of my profile screen
 
-
-
 const countdownItems = [
   {
     id: "countdown-1",
@@ -74,8 +61,6 @@ const countdownItems = [
     icon: "📅",
   },
 ];
-
-
 
 const handleSignOut = async () => {
   try {
@@ -97,7 +82,7 @@ export default function ProfileScreen() {
   const [eventListVisible, setEventListVisible] = useState(false);
   const [profileSheetIndex, setProfileSheetIndex] = useState(1);
   const profileSnapPoints = useMemo(
-    () => [110 + HANDLE_HEIGHT, "50%", "90%"],
+    () => [120 + HANDLE_HEIGHT, "50%", "87%"],
     [],
   );
 
@@ -111,8 +96,6 @@ export default function ProfileScreen() {
   const handleCloseEventList = () => {
     setEventListVisible(false);
   };
-
-
 
   const handleMoreOptions = (item) => {
     console.log("Open more options for:", item.title);
@@ -145,52 +128,27 @@ export default function ProfileScreen() {
     <View style={styles.screen}>
       {/* Hero image stays behind the draggable profile sheet. */}
       <View style={styles.heroContainer}>
-        <Image
-          source={{
-            uri: HERO_IMAGE_URI,
-          }}
-          style={styles.heroImage}
-        />
+        <Image source={HERO_IMAGE} style={styles.heroImage} />
 
         <Pressable
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.heroButtonText}>‹</Text>
+          <Ionicons name="chevron-back" size={30} color="#FFFFFF" />
         </Pressable>
 
         <Pressable
           style={styles.settingsButton}
           onPress={() => navigation.navigate("Settings")}
         >
-          <Image
-            source={{
-              uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/gear-512.webp",
-            }}
-            style={{
-              width: 28,
-              height: 28,
-              tintColor: "#FFFFFF", // optional
-            }}
-          />
+          <Ionicons name="settings-outline" size={28} color="#FFFFFF" />
         </Pressable>
-
-        {profileSheetIndex === 1 && (
-          <View style={styles.heroActions}>
-            <Pressable style={styles.heroActionButton}>
-              <Text style={styles.heroActionText}>My Account</Text>
-            </Pressable>
-
-            <Pressable style={styles.heroActionButton}>
-              <Text style={styles.heroActionText}>Profile Picture</Text>
-            </Pressable>
-          </View>
-        )}
       </View>
 
       <BottomSheet
         ref={profileSheetRef}
         index={1}
+        animateOnMount={false}
         onChange={setProfileSheetIndex}
         snapPoints={profileSnapPoints}
         enableDynamicSizing={false}
@@ -210,15 +168,13 @@ export default function ProfileScreen() {
             {/* User information */}
             <View style={styles.profileRow}>
               <Image
-                source={{
-                  uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/default.png",
-                }}
+                source={require("../../assets/profile/natalieqr.png")}
                 style={styles.profileImage}
               />
 
               <View style={styles.profileText}>
                 <Text style={styles.profileName}>{fakeName}</Text>
-                <Text style={styles.profileEmail}>Natalie</Text>
+                <Text style={styles.profileEmail}>natalieeee345</Text>
               </View>
             </View>
 
@@ -248,12 +204,8 @@ export default function ProfileScreen() {
               </Pressable>
 
               <Pressable style={[styles.tag, styles.topicChatTag]}>
-                <View style={styles.topicChatIcon}>
-                  <View style={styles.topicChatIconTail} />
-                </View>
                 <Text style={styles.tagText}>Add Topic Chat ›</Text>
               </Pressable>
-
             </View>
 
             {/* Black and gold feature card */}
@@ -293,7 +245,6 @@ export default function ProfileScreen() {
               {storyItems.map(renderDynamicRow)}
             </View>
 
-
             {/* Countdowns section */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Countdowns</Text>
@@ -314,10 +265,7 @@ export default function ProfileScreen() {
         </BottomSheetScrollView>
       </BottomSheet>
 
-      <EventList
-        visible={eventListVisible}
-        onClose={handleCloseEventList}
-      />
+      <EventList visible={eventListVisible} onClose={handleCloseEventList} />
     </View>
   );
 }
@@ -340,7 +288,7 @@ const styles = StyleSheet.create({
 
   backButton: {
     position: "absolute",
-    top: 55,
+    top: 50,
     left: 18,
     width: 48,
     height: 48,
@@ -352,7 +300,7 @@ const styles = StyleSheet.create({
 
   settingsButton: {
     position: "absolute",
-    top: 55,
+    top: 50,
     right: 18,
     width: 48,
     height: 48,
