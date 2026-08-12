@@ -84,7 +84,7 @@ const EventPageTab = forwardRef(function EventPageTab(
   const [saved, setSaved] = useState(false);
 
   const snapPoints = useMemo(
-    () => [COLLAPSED_HEIGHT + HANDLE_HEIGHT, "60%", "90%"],
+    () => [COLLAPSED_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
     [],
   );
 
