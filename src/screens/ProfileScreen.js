@@ -23,7 +23,7 @@ import { useAuthentication } from "../../utils/hooks/useAuthentication";
 import EventList from "../components/EventList";
 
 const HERO_IMAGE_URI =
-  "https://chatgpt.com/s/m_6a7bc5a9cd188191b3a538c83ad0301e";
+  "/Users/valston/Desktop/SEA - Project/final_showcase/sea2026_sustainability/assets/snapchat/nataline.png";
 
 const HANDLE_HEIGHT = 24;
 
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
     [],
   );
 
-  const fakeName = "Nat3";
+  const fakeName = "Natalie";
   const fakeEmail = user?.email || "wendy_332";
 
   const handleOpenEventList = () => {
@@ -204,7 +204,7 @@ export default function ProfileScreen() {
 
               <View style={styles.profileText}>
                 <Text style={styles.profileName}>{fakeName}</Text>
-                <Text style={styles.profileEmail}>Isathewrld</Text>
+                <Text style={styles.profileEmail}>Natalie</Text>
               </View>
             </View>
 
