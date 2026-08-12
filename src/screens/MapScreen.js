@@ -47,7 +47,8 @@ export default function MapScreen({ navigation }) {
   //Here will be the state variables for the list
   const [listVisible, setListVisible] = useState(false);
 
-  // separate flag for the saved list opened from the Favorites pill - it's the same EventList, just opened in saved-only mode
+  // separate flag for the saved list opened from the Favorites pill - it's
+  // the same EventList, just opened in saved-only mode
   const [savedVisible, setSavedVisible] = useState(false);
 
   //This will handle the closing of the Modal
@@ -189,8 +190,7 @@ export default function MapScreen({ navigation }) {
     focusOnItem(event);
   };
 
-  // new: tapping a different pin while a page is already open drops the current
-  // new: one first, then raises the new one - mirrors the list -> page swap
+  // tapping a different pin while a page is already open drops the current one first, then raises the new one - mirrors the list -> page swap
   const handleSelectPin = useCallback(
     (item) => {
       if (selectedEvent && selectedEvent.id !== item.id) {
@@ -241,6 +241,12 @@ export default function MapScreen({ navigation }) {
 
     setListVisible(true);
   };
+
+  // new: the sheet's View Impact button routes to the full Impact screen -
+  // new: EventList doesn't know navigation exists, it just calls this
+  const handleViewImpact = useCallback(() => {
+    navigation.navigate("Impact");
+  }, [navigation]);
 
   // rsvp straight from a card - the page writes through onRsvpChange instead
   const handleToggleRsvp = useCallback(
@@ -357,6 +363,7 @@ export default function MapScreen({ navigation }) {
                 latitude: item.latitude,
                 longitude: item.longitude,
               }}
+              // green pin, no title/description so no callout label shows
               pinColor="green"
               // swap straight to this event, bringing any open page down first
               onPress={() => handleSelectPin(item)}
@@ -408,6 +415,8 @@ export default function MapScreen({ navigation }) {
         onToggleRsvp={handleToggleRsvp}
         onToggleSaved={handleToggleSaved}
         onDirections={handleDirections}
+        // View Impact button in the header routes to the Impact screen
+        onViewImpact={handleViewImpact}
         // Tapping a card sends the whole event row back up here
         onSelectEvent={handleSelectEvent}
         //Here I am using the default function onClose() to pass false towards the component
@@ -428,6 +437,7 @@ export default function MapScreen({ navigation }) {
         onToggleRsvp={handleToggleRsvp}
         onToggleSaved={handleToggleSaved}
         onDirections={handleDirections}
+        onViewImpact={handleViewImpact}
         onSelectEvent={handleSelectEvent}
         onClose={handleSavedClosed}
       />

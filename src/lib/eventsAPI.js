@@ -11,10 +11,32 @@ import { isPastEvent } from "../../utils/datetimeUtil";
  *   Everything gets normalized here so no component has to guess what kind of row it got — they read `kind` instead.
  */
 
+// friends only for the avatar stack - a random attendee who isn't a friend shouldn't show up on the card, so this list gates who makes it through
+export async function fetchMyFriendIds() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("friends")
+    .select("user_id, friend_id")
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) =>
+    row.user_id === user.id ? row.friend_id : row.user_id,
+  );
+}
+
 // one normalizer for both — scheduled rows carry start/end, drop-ins carry hours
-function normalizeEvent(row) {
-  const attendeesData =
-    row.attending?.filter((a) => a.users != null)?.map((a) => a.users) ?? [];
+// friendIds filters the attending list down to people the user actually knows
+function normalizeEvent(row, friendIds = []) {
+  const friendAttendees = (row.attending ?? [])
+    .map((a) => a.users)
+    .filter((u) => u != null && friendIds.includes(u.id));
 
   return {
     kind: row.type === "anytime" ? "anytime" : "event",
@@ -37,22 +59,24 @@ function normalizeEvent(row) {
     organizationName: row.organizations?.name ?? null,
     organizationPagelink: row.organizations?.pagelink ?? null,
 
-    // avatar stack - each attendee's avatar from their users profile row
-    attendees: attendeesData.map((u) => ({ id: u.id, image: u.avatar })),
-    attendeeCount: attendeesData.length,
-    
+    // avatar stack - friends attending only, everyone else is left out
+    attendees: friendAttendees.map((u) => ({ id: u.id, image: u.avatar })),
+    attendeeCount: friendAttendees.length,
+
     // how many people saved it - number next to heart
     saveCount: row.saved_impacts?.[0]?.count ?? 0,
   };
 }
 
 // organizations is joined in so the page can show "Hosted by" without having to pull from db again
-// attending(count) gives the "24 going" number, saved_impacts(count) the heart number
+// attending(users) gives the people going so the card can filter to friends
 // one query covers both tabs — the map needs every pin regardless of which tab happens to be selected
 export async function fetchImpactFeed() {
+  // friend list first - every row gets filtered against this
+  const friendIds = await fetchMyFriendIds();
+
   const { data, error } = await supabase
     .from("events")
-    // users(id, avatar) to the attending join to pull user avatars for the stack
     .select(
       "*, organizations(name, pagelink), attending(users(id, avatar)), saved_impacts(count)",
     )
@@ -61,7 +85,7 @@ export async function fetchImpactFeed() {
 
   if (error) throw error;
 
-  const rows = (data ?? []).map(normalizeEvent);
+  const rows = (data ?? []).map((row) => normalizeEvent(row, friendIds));
 
   return {
     // finished events drop out of the list and off the map
@@ -151,14 +175,7 @@ export async function fetchAttendanceSummary(eventId) {
 
   if (!user) return { goingCount: goingCount ?? 0, friendCount: 0 };
 
-  const { data: friendRows } = await supabase
-    .from("friends")
-    .select("user_id, friend_id")
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
-
-  const friendIds = (friendRows ?? []).map((row) =>
-    row.user_id === user.id ? row.friend_id : row.user_id,
-  );
+  const friendIds = await fetchMyFriendIds();
 
   if (friendIds.length === 0) {
     return { goingCount: goingCount ?? 0, friendCount: 0 };

@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { formatEventWhen, formatOpenState } from "../../utils/datetimeUtil";
 import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
 
+const MAX_VISIBLE_AVATARS = 3;
+
 /**
  * EventCard
  *   Takes one normalized row (see lib/eventsAPI) and derives its own display
@@ -14,6 +16,8 @@ import { distanceFromUser, formatDistance } from "../../utils/geoUtil";
  *   heart = save, number next to it is how many people saved it
  *   the thumbnail always wears a blue story ring, snapchat-style - taps on it
  *   just log for now
+ *
+ *   avatar row is friends attending only
  */
 export default function EventCard({
   event,
@@ -41,14 +45,12 @@ export default function EventCard({
   // impact category - Water, Food, etc
   const cardTag = event?.category;
 
-  // the db only sends a count, so the avatar row stays empty until the query
-  // pulls attendee profiles too
+  // already filtered to friends attending, see eventsApi
   const cardAttendees = event?.attendees ?? [];
+  const cardAttendeeCount = event?.attendeeCount ?? cardAttendees.length;
 
-  const cardAttendeeCount = event?.attendeeCount || cardAttendees.length;
-
-  // This will show the first 3 people that are in the going
-  const visibleAttendees = cardAttendees.slice(0, 3);
+  const visibleAttendees = cardAttendees.slice(0, MAX_VISIBLE_AVATARS);
+  const overflowCount = cardAttendeeCount - visibleAttendees.length;
 
   // everyone who saved it, not just this user - comes from the db rather than
   // local state, so it survives closing the sheet
@@ -83,9 +85,7 @@ export default function EventCard({
             style={styles.cardMedia}
           />
         ) : (
-          <View style={[styles.cardMedia, styles.imagePlaceholder]}>
-            <Text style={styles.imagePlaceholderText}>IMG</Text>
-          </View>
+          <View style={[styles.cardMedia, styles.imagePlaceholder]} />
         )}
       </Pressable>
 
@@ -103,34 +103,57 @@ export default function EventCard({
 
         {!!cardDistance && <Text style={styles.distance}>{cardDistance}</Text>}
 
-        {!!cardTag && (
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>{cardTag}</Text>
-          </View>
-        )}
-
-        <View style={styles.attendeeContainer}>
-          <View style={styles.avatarGroup}>
-            {visibleAttendees.map((attendee, index) => (
-              <Image
-                key={attendee.id ?? index}
-                source={
-                  typeof (attendee.image ?? attendee) === "string"
-                    ? {
-                        uri: attendee.image ?? attendee,
-                      }
-                    : (attendee.image ?? attendee)
-                }
-                style={[
-                  styles.attendeeAvatar,
-                  index > 0 && styles.overlappingAvatar,
-                ]}
-              />
-            ))}
-          </View>
+        <View style={styles.metaRow}>
+          {!!cardTag && (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{cardTag}</Text>
+            </View>
+          )}
 
           {cardAttendeeCount > 0 && (
-            <Text style={styles.attendeeText}>{cardAttendeeCount} Going</Text>
+            <View style={styles.attendeeContainer}>
+              <View style={styles.avatarGroup}>
+                {visibleAttendees.map((attendee, index) => {
+                  const hasImage = !!attendee.image;
+
+                  return hasImage ? (
+                    <Image
+                      key={attendee.id ?? index}
+                      source={{ uri: attendee.image }}
+                      style={[
+                        styles.attendeeAvatar,
+                        index > 0 && styles.overlappingAvatar,
+                      ]}
+                    />
+                  ) : (
+                    <View
+                      key={attendee.id ?? index}
+                      style={[
+                        styles.attendeeAvatar,
+                        styles.attendeeAvatarEmpty,
+                        index > 0 && styles.overlappingAvatar,
+                      ]}
+                    />
+                  );
+                })}
+
+                {overflowCount > 0 && (
+                  <View
+                    style={[
+                      styles.attendeeAvatar,
+                      styles.attendeeAvatarMore,
+                      styles.overlappingAvatar,
+                    ]}
+                  >
+                    <Text style={styles.attendeeMoreText}>
+                      +{overflowCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.attendeeText}>{cardAttendeeCount} Going</Text>
+            </View>
           )}
         </View>
       </View>
@@ -146,7 +169,7 @@ export default function EventCard({
         >
           <Ionicons
             name={saved ? "heart" : "heart-outline"}
-            size={27}
+            size={22}
             color={saved ? "#E53935" : "#555555"}
           />
 
@@ -164,22 +187,22 @@ export default function EventCard({
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    minHeight: 160,
+    minHeight: 96,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 12,
-    marginBottom: 14,
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 10,
 
     shadowColor: "#000000",
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 2,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   cardPressed: {
@@ -188,76 +211,73 @@ const styles = StyleSheet.create({
 
   // Circular event image
   cardMedia: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     resizeMode: "cover",
   },
 
   thumbRing: {
-    borderRadius: 52,
-    borderWidth: 2.5,
+    borderRadius: 36,
+    borderWidth: 2,
     borderColor: "#3DA9FC",
-    padding: 3,
+    padding: 2,
   },
 
   imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "#E8E8E8",
-  },
-
-  imagePlaceholderText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#777777",
   },
 
   cardContent: {
     flex: 1,
-    marginLeft: 14,
-    paddingRight: 8,
+    marginLeft: 10,
+    paddingRight: 6,
   },
 
   title: {
-    fontSize: 21,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "700",
     color: "#111111",
   },
 
   dateTime: {
-    marginTop: 5,
-    fontSize: 15,
+    marginTop: 2,
+    fontSize: 12,
     fontWeight: "600",
     color: "#454545",
   },
 
   distance: {
-    marginTop: 4,
-    fontSize: 15,
+    marginTop: 1,
+    fontSize: 12,
     fontWeight: "700",
     color: "#111111",
   },
 
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+
   tag: {
     alignSelf: "flex-start",
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
     borderColor: "#E1E4E8",
     borderRadius: 20,
   },
 
   tagText: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#222222",
   },
 
   attendeeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 12,
   },
 
   avatarGroup: {
@@ -266,43 +286,57 @@ const styles = StyleSheet.create({
   },
 
   attendeeAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: "#FFFFFF",
     backgroundColor: "#EFEFEF",
   },
 
+  attendeeAvatarEmpty: {
+    backgroundColor: "#D9D9D9",
+  },
+
+  attendeeAvatarMore: {
+    backgroundColor: "#111111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  attendeeMoreText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
   overlappingAvatar: {
-    marginLeft: -10,
+    marginLeft: -6,
   },
 
   attendeeText: {
-    marginLeft: 7,
-    fontSize: 14,
+    marginLeft: 6,
+    fontSize: 11,
     fontWeight: "600",
     color: "#444444",
   },
 
   // Far-right controls
   cardActions: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 4,
+    alignSelf: "flex-start",
+    paddingTop: 2,
   },
 
   heartButton: {
-    minWidth: 48,
+    minWidth: 34,
     alignItems: "center",
     justifyContent: "center",
-    padding: 4,
+    padding: 2,
   },
 
   likeCount: {
-    marginTop: 2,
-    fontSize: 13,
+    marginTop: 1,
+    fontSize: 11,
     fontWeight: "700",
     color: "#555555",
   },
