@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -12,11 +12,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MarkPopUp from "../components/MarkPopUp";
 
-const NATALIE_BITMOJI = require("../../assets/bitmoji-icons/natalie.png");
-const EZRA_BITMOJI = require("../../assets/bitmoji-icons/EzraLoBianco_SDA.png");
-const ABBEY_BITMOJI = require("../../assets/bitmoji-icons/Abby Gessesse_SDA.png");
-const DANIEL_BITMOJI = require("../../assets/bitmoji-icons/Daniel Khoo_SSA.png");
-const JAS_BITMOJI = require("../../assets/bitmoji-icons/Jas- SSA .png");
+import SendIcon from "../../assets/camera-icons/send.svg";
+import { fetchMyFriends, fetchMyProfile } from "../lib/eventsAPI";
+
 const JADE_BITMOJI = require("../../assets/bitmoji-icons/Jade Quinonez_SEA.png");
 const JAELIN_BITMOJI = require("../../assets/bitmoji-icons/Jaelin Taylor_SDA.png");
 const VITA_BITMOJI = require("../../assets/bitmoji-icons/Vita Medina_SDA.png");
@@ -40,21 +38,12 @@ const STORIES = [
     id: "story-friends",
     title: "My Story · Friends Only",
     subtitle: "Just for Friends",
-    avatar: NATALIE_BITMOJI,
   },
   {
     id: "story-public",
     title: "My Story · Public",
     subtitle: "Friends, Followers, and Everyone",
-    avatar: NATALIE_BITMOJI,
   },
-];
-
-const BEST_FRIENDS = [
-  { id: "bf1", name: "Ezra LoBianco", avatar: EZRA_BITMOJI },
-  { id: "bf2", name: "abbey gessesse", avatar: ABBEY_BITMOJI },
-  { id: "bf3", name: "Daniel", avatar: DANIEL_BITMOJI },
-  { id: "bf4", name: "jas", avatar: JAS_BITMOJI },
 ];
 
 const TOP_GROUPS = [
@@ -89,16 +78,6 @@ const RECENTS = [
   },
 ];
 
-const SELECTABLE_NAMES = [
-  { id: SPOTLIGHT.id, name: SPOTLIGHT.title },
-  ...STORIES.map((s) => ({ id: s.id, name: s.title })),
-  { id: "story-custom", name: "Custom Story" },
-  { id: "my-ai", name: "My AI" },
-  ...BEST_FRIENDS.map((f) => ({ id: f.id, name: f.name })),
-  ...TOP_GROUPS.map((g) => ({ id: g.id, name: g.name })),
-  ...RECENTS.map((r) => ({ id: r.id, name: r.name })),
-].reduce((map, item) => ({ ...map, [item.id]: item.name }), {});
-
 function PlaceholderAvatar({ shape = "circle", style }) {
   return (
     <View
@@ -113,15 +92,30 @@ function PlaceholderAvatar({ shape = "circle", style }) {
   );
 }
 
-function Row({ title, subtitle, shape, stacked, avatar, avatars, selected, onPress }) {
+function Row({
+  title,
+  subtitle,
+  shape,
+  stacked,
+  avatar,
+  avatars,
+  selected,
+  onPress,
+}) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       {stacked ? (
         <View style={styles.stackedAvatars}>
           {avatars ? (
             <>
-              <Image source={avatars[0]} style={[styles.placeholderAvatar, styles.avatarBack]} />
-              <Image source={avatars[1]} style={[styles.placeholderAvatar, styles.avatarFront]} />
+              <Image
+                source={avatars[0]}
+                style={[styles.placeholderAvatar, styles.avatarBack]}
+              />
+              <Image
+                source={avatars[1]}
+                style={[styles.placeholderAvatar, styles.avatarFront]}
+              />
             </>
           ) : (
             <>
@@ -133,7 +127,10 @@ function Row({ title, subtitle, shape, stacked, avatar, avatars, selected, onPre
       ) : avatar ? (
         <Image
           source={typeof avatar === "string" ? { uri: avatar } : avatar}
-          style={[styles.placeholderAvatar, shape === "square" && styles.placeholderSquare]}
+          style={[
+            styles.placeholderAvatar,
+            shape === "square" && styles.placeholderSquare,
+          ]}
         />
       ) : (
         <PlaceholderAvatar shape={shape} />
@@ -168,6 +165,34 @@ export default function SendToScreen({ navigation, route }) {
   const [selected, setSelected] = useState(new Set());
   const [markPopupVisible, setMarkPopupVisible] = useState(false);
 
+  // friends from the db
+  const [friends, setFriends] = useState([]);
+  // signed-in user
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [rows, myProfile] = await Promise.all([
+          fetchMyFriends(),
+          fetchMyProfile(),
+        ]);
+
+        if (cancelled) return;
+        setFriends(rows);
+        setProfile(myProfile);
+      } catch (error) {
+        console.log("Send to data failed to load", error.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const toggleSelect = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -200,10 +225,10 @@ export default function SendToScreen({ navigation, route }) {
 
   const showSpotlight = !normalizedQuery || matches(SPOTLIGHT.title);
 
-  const filteredBestFriends = useMemo(() => {
+  const filteredFriends = useMemo(() => {
     if (activeTab !== "All" && activeTab !== "Contacts") return [];
-    return BEST_FRIENDS.filter((f) => matches(f.name));
-  }, [activeTab, normalizedQuery]);
+    return friends.filter((f) => matches(f.username ?? ""));
+  }, [activeTab, normalizedQuery, friends]);
 
   const filteredGroups = useMemo(() => {
     if (activeTab !== "All" && activeTab !== "Groups") return [];
@@ -219,13 +244,36 @@ export default function SendToScreen({ navigation, route }) {
     return [];
   }, [activeTab, normalizedQuery]);
 
+  // friends come from the db
+  const selectableNames = useMemo(() => {
+    const entries = [
+      { id: SPOTLIGHT.id, name: SPOTLIGHT.title },
+      ...STORIES.map((s) => ({ id: s.id, name: s.title })),
+      { id: "story-custom", name: "Custom Story" },
+      { id: "my-ai", name: "My AI" },
+      ...friends.map((f) => ({ id: f.id, name: f.username })),
+      ...TOP_GROUPS.map((g) => ({ id: g.id, name: g.name })),
+      ...RECENTS.map((r) => ({ id: r.id, name: r.name })),
+    ];
+
+    return entries.reduce((map, item) => ({ ...map, [item.id]: item.name }), {});
+  }, [friends]);
+
   const selectedNames = useMemo(
-    () => Array.from(selected).map((id) => SELECTABLE_NAMES[id]).join(", "),
-    [selected],
+    () =>
+      Array.from(selected)
+        .map((id) => selectableNames[id])
+        .filter(Boolean)
+        .join(", "),
+    [selected, selectableNames],
   );
 
   const handleSend = () => {
-    setMarkPopupVisible(true);
+    if (photoUri) {
+      setMarkPopupVisible(true);
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
@@ -314,7 +362,7 @@ export default function SendToScreen({ navigation, route }) {
                       title={story.title}
                       subtitle={story.subtitle}
                       shape={story.shape}
-                      avatar={story.avatar}
+                      avatar={profile?.avatar}
                       selected={selected.has(story.id)}
                       onPress={() => toggleSelect(story.id)}
                     />
@@ -332,6 +380,7 @@ export default function SendToScreen({ navigation, route }) {
                       title="Custom Story"
                       subtitle="Choose who can view"
                       shape="circle"
+                      avatar={profile?.avatar}
                       selected={selected.has("story-custom")}
                       onPress={() => toggleSelect("story-custom")}
                     />
@@ -355,20 +404,20 @@ export default function SendToScreen({ navigation, route }) {
             </View>
           )}
 
-          {filteredBestFriends.length > 0 && (
+          {filteredFriends.length > 0 && (
             <>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeader}>Best Friends</Text>
-                <TouchableOpacity onPress={() => selectAll(filteredBestFriends)}>
+                <Text style={styles.sectionHeader}>Friends</Text>
+                <TouchableOpacity onPress={() => selectAll(filteredFriends)}>
                   <Text style={styles.selectAllText}>Select All</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.cardShadow}>
                 <View style={styles.sectionCard}>
-                  {filteredBestFriends.map((friend) => (
+                  {filteredFriends.map((friend) => (
                     <Row
                       key={friend.id}
-                      title={friend.name}
+                      title={friend.username}
                       shape="circle"
                       avatar={friend.avatar}
                       selected={selected.has(friend.id)}
@@ -408,7 +457,9 @@ export default function SendToScreen({ navigation, route }) {
 
           {filteredRecents.length > 0 && (
             <>
-              <Text style={[styles.sectionHeader, styles.sectionHeaderStandalone]}>
+              <Text
+                style={[styles.sectionHeader, styles.sectionHeaderStandalone]}
+              >
                 Recents & Suggested
               </Text>
               <View style={styles.cardShadow}>
@@ -454,7 +505,7 @@ export default function SendToScreen({ navigation, route }) {
         }}
         onViewImpact={() => {
           setMarkPopupVisible(false);
-          navigation.navigate("Impact");
+          navigation.replace("Impact");
         }}
       />
     </View>

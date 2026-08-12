@@ -12,9 +12,16 @@ import {
   Image,
   Text,
   TouchableOpacity,
+  ScrollView,
   Linking,
   Platform,
 } from "react-native";
+import { Pressable } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
@@ -34,16 +41,23 @@ import SproutIcon from "../../assets/pill-icons/sprout.svg";
 // Both tables load here so the map pins and the list share one dataset
 import {
   fetchImpactFeed,
+  fetchMyFriends,
   fetchMyRsvpEventIds,
   fetchMySavedImpactIds,
   rsvpToEvent,
   cancelRsvp,
   toggleSavedImpact,
+  fetchMyProfile,
 } from "../lib/eventsAPI";
 
 // one green for the whole marker - sprout, thumbnail ring, and text
 const MARKER_GREEN = "#2ECC4E";
 
+// friend strip sizing
+const FRIEND_AVATAR_SIZE = 44;
+
+const TOP_ROW_OFFSET = 2;
+const PILL_BAR_OFFSET = TOP_ROW_OFFSET + 50; // row height + gap
 // the 8 directional offsets that build the hard stroke
 const OUTLINE_OFFSETS = [
   [-1, -1],
@@ -56,12 +70,42 @@ const OUTLINE_OFFSETS = [
   [1, 0],
 ];
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// matches MapPillBar's press feel
+const PRESS_SCALE = 0.85;
+const PRESS_DURATION = 90;
+
+// wraps anything in the strip so it shrinks on press like the pills do
+function PressableScale({ style, onPress, children }) {
+  const scale = useSharedValue(1);
+
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <AnimatedPressable
+      style={[style, pressStyle]}
+      onPressIn={() => {
+        scale.value = withTiming(PRESS_SCALE, { duration: PRESS_DURATION });
+      }}
+      onPressOut={() => {
+        scale.value = withTiming(1, { duration: PRESS_DURATION });
+      }}
+      onPress={onPress}
+    >
+      {children}
+    </AnimatedPressable>
+  );
+}
+
 // A clean helper component to generate the hard white outline for the text
 function OutlinedText({
   text,
   style,
   outlineColor = "white",
-  outlineWidth = .8,
+  outlineWidth = 0.8,
   numberOfLines,
 }) {
   return (
@@ -94,6 +138,25 @@ function OutlinedText({
   );
 }
 
+function FadeRow({ visible, style, children }) {
+  const opacity = useSharedValue(visible ? 1 : 0);
+
+  useEffect(() => {
+    opacity.value = withTiming(visible ? 1 : 0, { duration: 150 });
+  }, [visible, opacity]);
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      style={[style, fadeStyle]}
+      pointerEvents={visible ? "auto" : "none"}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function MapScreen({ navigation }) {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -113,6 +176,11 @@ export default function MapScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [anytimeImpacts, setAnytimeImpacts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
+
+  // friends for the avatar strip along the bottom
+  const [friends, setFriends] = useState([]);
+  // signed-in user's own row
+  const [profile, setProfile] = useState(null);
 
   // rsvp ids live up here so the card and the event page can't disagree
   const [rsvpEventIds, setRsvpEventIds] = useState([]);
@@ -166,18 +234,25 @@ export default function MapScreen({ navigation }) {
     })();
   }, []);
 
-  // one fetch - both tabs and every pin come out of this
+  // one fetch - both tabs, every pin, and the friend strip come out of this
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const [{ events: eventRows, anytime }, rsvpIds, savedIds] =
-          await Promise.all([
-            fetchImpactFeed(),
-            fetchMyRsvpEventIds(),
-            fetchMySavedImpactIds(),
-          ]);
+        const [
+          { events: eventRows, anytime },
+          rsvpIds,
+          savedIds,
+          friendRows,
+          myProfile,
+        ] = await Promise.all([
+          fetchImpactFeed(),
+          fetchMyRsvpEventIds(),
+          fetchMySavedImpactIds(),
+          fetchMyFriends(),
+          fetchMyProfile(),
+        ]);
 
         if (cancelled) return;
 
@@ -185,6 +260,9 @@ export default function MapScreen({ navigation }) {
         setAnytimeImpacts(anytime);
         setRsvpEventIds(rsvpIds);
         setSavedPlaceIds(savedIds);
+        setFriends(friendRows);
+        setProfile(myProfile);
+        console.log("profile:", myProfile);
       } catch (error) {
         console.log("Impact feed failed to load", error.message);
       } finally {
@@ -295,6 +373,21 @@ export default function MapScreen({ navigation }) {
   const handleViewImpact = useCallback(() => {
     navigation.navigate("Impact");
   }, [navigation]);
+
+  // recenters the map on the user - the strip's round button
+  const handleRecenter = useCallback(() => {
+    if (!location) return;
+    const { latitude, longitude } = location.coords;
+    setCurrentRegion({ ...currentRegion, latitude, longitude });
+
+    // animate rather than re-render into place
+    mapRef.current?.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.0922,
+      longitudeDelta: 0.0421,
+    });
+  }, [location, currentRegion]);
 
   // rsvp straight from a card - the page writes through onRsvpChange instead
   const handleToggleRsvp = useCallback(
@@ -460,34 +553,79 @@ export default function MapScreen({ navigation }) {
         ))}
       </MapView>
 
+      <FadeRow
+        visible={isFocused && !selectedEvent && !listVisible && !savedVisible}
+        style={[styles.topRow, { top: insets.top + TOP_ROW_OFFSET }]}
+      >
+        <PressableScale
+          style={[styles.profileButton, styles.shadow]}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          {profile?.avatar ? (
+            <Image
+              source={{ uri: profile.avatar }}
+              style={styles.profileAvatar}
+            />
+          ) : (
+            <View style={[styles.profileAvatar, styles.profileAvatarEmpty]} />
+          )}
+        </PressableScale>
+
+        <Text style={styles.cityLabel}>Santa Monica</Text>
+      </FadeRow>
       {/* pills hide while off the map, or while either modal is open */}
       <MapPillBar
         visible={isFocused && !selectedEvent && !listVisible && !savedVisible}
+        topOffset={PILL_BAR_OFFSET}
         onSelect={handlePillSelect}
       />
 
-      <View style={[styles.mapFooter]}>
-        <View style={styles.locationContainer}>
-          <TouchableOpacity
-            style={[styles.userLocation, styles.shadow]}
-            onPress={() => {
-              if (!location) return;
-              const { latitude, longitude } = location.coords;
-              setCurrentRegion({ ...currentRegion, latitude, longitude });
+      {/* bottom strip - recenter button above, friend avatars scrolling below */}
+      {!selectedEvent && !listVisible && !savedVisible && (
+        <View style={styles.mapFooter}>
+          <View style={styles.recenterRow}>
+            <PressableScale
+              style={[styles.circleButton, styles.shadow]}
+              onPress={handleRecenter}
+            >
+              <Ionicons name="navigate-outline" size={20} color="#111111" />
+            </PressableScale>
+          </View>
 
-              // animate rather than re-render into place
-              mapRef.current?.animateToRegion({
-                latitude,
-                longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              });
-            }}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.friendStrip}
           >
-            <Ionicons name="navigate" size={15} color="black" />
-          </TouchableOpacity>
+            <PressableScale style={[styles.circleButton, styles.shadow]}>
+              <Ionicons name="search" size={20} color="#111111" />
+            </PressableScale>
+
+            {friends.map((friend) => (
+              <PressableScale
+                key={friend.id}
+                style={[styles.friendAvatarWrapper, styles.shadow]}
+              >
+                {friend.avatar ? (
+                  <Image
+                    source={{ uri: friend.avatar }}
+                    style={styles.friendAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[styles.friendAvatar, styles.friendAvatarEmpty]}
+                  />
+                )}
+              </PressableScale>
+            ))}
+
+            <PressableScale style={[styles.addFriendPill, styles.shadow]}>
+              <Ionicons name="person-add-outline" size={19} color="#111111" />
+              <Text style={styles.addFriendText}>Add Friend</Text>
+            </PressableScale>
+          </ScrollView>
         </View>
-      </View>
+      )}
 
       <EventList
         visible={listVisible}
@@ -543,35 +681,70 @@ const styles = StyleSheet.create({
   },
   mapFooter: {
     width: "100%",
-    display: "flex",
-    flexDirection: "column",
     position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 20,
+    paddingBottom: 23,
     bottom: 0,
   },
-  locationContainer: {
-    backgroundColor: "transparent",
-    width: "100%",
-    paddingBottom: 8,
-    alignItems: "center",
+
+  recenterRow: {
+    alignItems: "flex-end",
+    paddingHorizontal: 10,
+    paddingBottom: 10,
   },
-  userLocation: {
-    backgroundColor: "white",
-    borderRadius: 100,
-    height: 36,
-    width: 36,
+
+  circleButton: {
+    width: FRIEND_AVATAR_SIZE,
+    height: FRIEND_AVATAR_SIZE,
+    borderRadius: FRIEND_AVATAR_SIZE / 2,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     alignItems: "center",
     justifyContent: "center",
-    elevation: 5,
   },
+
   shadow: {
-    shadowColor: "rgba(0, 0, 0)",
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 3,
-    shadowOpacity: 0.5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    shadowOpacity: 0.18,
     elevation: 4,
+  },
+
+  // horizontal scroll of friend faces
+  friendStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    gap: 10,
+  },
+  friendAvatarWrapper: {
+    width: FRIEND_AVATAR_SIZE,
+    height: FRIEND_AVATAR_SIZE,
+    borderRadius: FRIEND_AVATAR_SIZE / 2,
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+  },
+  friendAvatar: {
+    width: FRIEND_AVATAR_SIZE,
+    height: FRIEND_AVATAR_SIZE,
+    borderRadius: FRIEND_AVATAR_SIZE / 2,
+    resizeMode: "cover",
+  },
+  friendAvatarEmpty: {
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+  },
+  addFriendPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: FRIEND_AVATAR_SIZE,
+    paddingHorizontal: 20,
+    borderRadius: FRIEND_AVATAR_SIZE / 2,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+  },
+  addFriendText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111111",
   },
 
   // Outline Text Wrapper Helper Style
@@ -630,6 +803,37 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: "700",
     color: MARKER_GREEN,
-    marginLeft: 2
+    marginLeft: 2,
+  },
+  topRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    zIndex: 2,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+  },
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    resizeMode: "cover",
+  },
+  profileAvatarEmpty: {
+    backgroundColor: "#D9D9D9",
+  },
+  cityLabel: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#111111",
   },
 });

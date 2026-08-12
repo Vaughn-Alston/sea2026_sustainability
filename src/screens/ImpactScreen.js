@@ -1,10 +1,18 @@
-import React, { useState } from "react";
-import { View, Text, Image, StyleSheet, Pressable, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import CommunityTab from "../components/CommunityTab";
+import { fetchMyProfile } from "../lib/eventsAPI";
 
 const NATALIE_BITMOJI = require("../../assets/bitmoji-icons/natalie.png");
 const SILVER_MEDAL = require("../../assets/impact-assets/silvermetal.png");
@@ -70,6 +78,25 @@ const RECENT_IMPACT = [
 export default function ImpactScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState("overview");
+  const [profile, setProfile] = useState(null);
+
+  // signed-in user's row so card shows their avatar
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const myProfile = await fetchMyProfile();
+        if (!cancelled) setProfile(myProfile);
+      } catch (error) {
+        console.log("Profile load failed", error.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -88,10 +115,7 @@ export default function ImpactScreen() {
 
       {/* Tabs */}
       <View style={styles.tabRow}>
-        <Pressable
-          style={styles.tab}
-          onPress={() => setActiveTab("overview")}
-        >
+        <Pressable style={styles.tab} onPress={() => setActiveTab("overview")}>
           <Text
             style={[
               styles.tabLabel,
@@ -103,10 +127,7 @@ export default function ImpactScreen() {
           {activeTab === "overview" && <View style={styles.tabIndicator} />}
         </Pressable>
 
-        <Pressable
-          style={styles.tab}
-          onPress={() => setActiveTab("community")}
-        >
+        <Pressable style={styles.tab} onPress={() => setActiveTab("community")}>
           <Text
             style={[
               styles.tabLabel,
@@ -129,9 +150,19 @@ export default function ImpactScreen() {
             <View style={styles.card}>
               <View style={styles.avatarRing}>
                 <ProgressRing progress={AVATAR_RING_PROGRESS} />
-                <Image source={NATALIE_BITMOJI} style={styles.avatarImage} />
+                {profile?.avatar ? (
+                  <Image
+                    source={{ uri: profile.avatar }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={[styles.avatarImage, styles.avatarEmpty]} />
+                )}
                 <View style={styles.avatarBadge}>
-                  <Image source={SILVER_MEDAL} style={styles.avatarBadgeImage} />
+                  <Image
+                    source={SILVER_MEDAL}
+                    style={styles.avatarBadgeImage}
+                  />
                 </View>
               </View>
 
@@ -446,5 +477,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#111111",
+  },
+  avatarEmpty: {
+    backgroundColor: "#D9D9D9",
   },
 });

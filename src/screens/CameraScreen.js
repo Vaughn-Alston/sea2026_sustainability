@@ -10,6 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MarkPopUp from "../components/MarkPopUp";
+import { useIsFocused } from "@react-navigation/native";
 
 const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
 
@@ -51,6 +52,14 @@ export default function CameraScreen({ navigation }) {
   const [photoTakenAt, setPhotoTakenAt] = useState(null);
   const [markPopupVisible, setMarkPopupVisible] = useState(false);
   const cameraRef = useRef(null);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      setPhotoUri(null);
+      setPhotoTakenAt(null);
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     navigation.setOptions({
