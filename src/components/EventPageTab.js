@@ -410,7 +410,6 @@ const EventPageTab = forwardRef(function EventPageTab(
             {/* drive time */}
             <Pressable
               style={[styles.button, styles.buttonNeutral, styles.driveButton]}
-              onPress={handleDirectionsPress}
             >
               <Ionicons name="car" size={21} color="#000000" />
               <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
