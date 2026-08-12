@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
   mapFooter: {
     width: "100%",
     position: "absolute",
-    paddingBottom: 23,
+    paddingBottom: 28,
     bottom: 0,
   },
 
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
     width: FRIEND_AVATAR_SIZE,
     height: FRIEND_AVATAR_SIZE,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
     height: FRIEND_AVATAR_SIZE,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
   },
   friendAvatar: {
     width: FRIEND_AVATAR_SIZE,
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   friendAvatarEmpty: {
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
   },
   addFriendPill: {
     flexDirection: "row",
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     height: FRIEND_AVATAR_SIZE,
     paddingHorizontal: 20,
     borderRadius: FRIEND_AVATAR_SIZE / 2,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
   },
   addFriendText: {
     fontSize: 16,
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
   },
   profileAvatar: {
     width: 44,
