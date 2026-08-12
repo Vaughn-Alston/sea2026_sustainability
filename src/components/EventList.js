@@ -15,6 +15,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
+
 //this will allow me to use the bottom sheet component in my app
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 
@@ -94,7 +96,7 @@ export default function EventList({
   const sheetRef = useRef(null);
 
   const snapPoints = useMemo(() => [80 + HANDLE_HEIGHT, "50%", "90%"], []);
-  
+
   const handleClosePress = useCallback(() => {
     sheetRef.current?.close();
   }, []);
@@ -143,17 +145,17 @@ export default function EventList({
             <View style={styles.headerIconCircle}>
               {/* new: heart on the favorites sheet, leaf otherwise */}
               {isFavorites ? (
-                <FavoritesIcon
-                  width={25}
-                  height={25}
-                />
+                <FavoritesIcon width={25} height={25} />
               ) : (
-                <ImpactIcon width={HEADER_ICON_SIZE} height={HEADER_ICON_SIZE} style={{ marginLeft: 1, marginTop: 4 }}/>
+                <ImpactIcon
+                  width={HEADER_ICON_SIZE}
+                  height={HEADER_ICON_SIZE}
+                  style={{ marginLeft: 1, marginTop: 4 }}
+                />
               )}
             </View>
 
             <View>
-              {/* new: header title follows which pill opened the sheet */}
               <Text style={styles.impactLabel}>
                 {isFavorites ? "Favorites" : "Impacts"}
               </Text>
@@ -175,7 +177,7 @@ export default function EventList({
               onPress={handleClosePress}
               hitSlop={10}
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Ionicons name="close" size={18} color="#111111" />
             </Pressable>
           </View>
         </View>
@@ -303,8 +305,8 @@ const styles = StyleSheet.create({
   },
 
   impactLabel: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "600",
     color: "#111111",
   },
 
@@ -316,8 +318,9 @@ const styles = StyleSheet.create({
   },
 
   viewImpactButton: {
-    height: 36,
-    paddingHorizontal: 16,
+    height: 32,
+    paddingHorizontal: 24,
+    marginRight: 6,
     borderRadius: 100,
     backgroundColor: "#2ECC4E",
     alignItems: "center",
@@ -326,23 +329,17 @@ const styles = StyleSheet.create({
 
   viewImpactText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#111111",
   },
 
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+   closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EBEBED",
-  },
-
-  closeButtonText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#000000",
   },
 
   tabRow: {
@@ -363,7 +360,7 @@ const styles = StyleSheet.create({
   },
 
   activeTabText: {
-    fontWeight: "800",
+    fontWeight: "600",
     color: "#111111",
   },
 
