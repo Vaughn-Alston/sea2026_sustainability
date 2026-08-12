@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef } from "react";
 import {
   Image,
   Text,
@@ -6,15 +6,15 @@ import {
   Button,
   StyleSheet,
   Pressable,
-  ScrollView,
 } from "react-native";
+import BottomSheet, {
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
 
 import { useNavigation } from "@react-navigation/native";
 
 import { supabase } from "../../utils/hooks/supabase";
 import { useAuthentication } from "../../utils/hooks/useAuthentication";
-
-import EventList from "../components/EventList";
 
 //Here I will have my array of items filling the Story section of my profile scrren
 const storyItems = [
@@ -70,22 +70,28 @@ const handleSignOut = async () => {
   }
 };
 
+const HANDLE_HEIGHT = 24;
+
+function SheetHandle() {
+  return (
+    <View style={styles.handleContainer}>
+      <View style={styles.handleIndicator} />
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
-const navigation = useNavigation();
-const { user } = useAuthentication();
+  const navigation = useNavigation();
+  const { user } = useAuthentication();
 
-  const [eventListVisible, setEventListVisible] = useState(false);
+  const sheetRef = useRef(null);
+  const snapPoints = useMemo(
+    () => ["28%", "50%", "90%"],
+    [],
+  );
 
-  const fakeName = "Isa Munoz";
+  const fakeName = "Nat";
   const fakeEmail = user?.email || "wendy_332";
-
-  const handleOpenEventList = () => {
-    setEventListVisible(true);
-  };
-
-  const handleCloseEventList = () => {
-    setEventListVisible(false);
-  };
 
 
 
@@ -118,49 +124,51 @@ const { user } = useAuthentication();
 
   return (
     <View style={styles.screen}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+      {/* Hero section */}
+      <Image
+        source={{
+          uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/pier_background_bitmoji.png",
+        }}
+        style={styles.heroImage}
+      />
+
+      <Pressable
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
       >
-        {/* Hero section */}
-        <View style={styles.heroContainer}>
-          <Image
-            source={{
-              uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/pier_background_bitmoji.png",
-            }}
-            style={styles.heroImage}
-          />
+        <Text style={styles.heroButtonText}>‹</Text>
+      </Pressable>
 
-          <Pressable
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.heroButtonText}>‹</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate("Settings")}
-          >
-            <Image
-              source={{
-                uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/gear-512.webp",
-              }}
-              style={{
-                width: 28,
-                height: 28,
-                tintColor: "#FFFFFF", // optional
-              }}
-            />
-          </Pressable>
-        </View>
+      <Pressable
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate("Settings")}
+      >
+        <Image
+          source={{
+            uri: "/Users/valston/Desktop/SEA - Project/party_mode/assets/snapchat/folder_page_1/gear-512.webp",
+          }}
+          style={styles.heroButtonIcon}
+        />
+      </Pressable>
 
 
-        
-
-        {/* Main content below hero */}
-        <View style={styles.contentContainer}>
-          <View style={styles.topHandle} />
+      <BottomSheet
+        ref={sheetRef}
+        index={1}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        enableHandlePanningGesture
+        enableContentPanningGesture
+        enablePanDownToClose={false}
+        handleComponent={SheetHandle}
+        backgroundStyle={styles.sheetBackground}
+        style={styles.sheetShadow}
+      >
+        {/* Main profile content sits inside the draggable sheet. */}
+        <BottomSheetScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+        >
 
           {/* User information */}
           <View style={styles.profileRow}>
@@ -173,7 +181,7 @@ const { user } = useAuthentication();
 
             <View style={styles.profileText}>
               <Text style={styles.profileName}>{fakeName}</Text>
-              <Text style={styles.profileEmail}>Isathewrld</Text>
+              <Text style={styles.profileEmail}>{fakeEmail}</Text>
             </View>
           </View>
 
@@ -246,14 +254,8 @@ const { user } = useAuthentication();
           <View style={styles.logoutContainer}>
             <Button title="Log Out" onPress={handleSignOut} />
           </View>
-        </View>
-      </ScrollView>
-
-      <EventList
-        visible={eventListVisible}
-        onClose={handleCloseEventList}
-        
-      />
+        </BottomSheetScrollView>
+      </BottomSheet>
     </View>
   );
 }
@@ -264,17 +266,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
   },
 
-  scrollContent: {
-    flexGrow: 1,
-  },
-
-  heroContainer: {
-    width: "100%",
-    height: 320,
-    position: "relative",
-  },
-
   heroImage: {
+    ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
     resizeMode: "cover",
@@ -314,25 +307,43 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     resizeMode: "contain",
+    tintColor: "#FFFFFF",
   },
 
-  contentContainer: {
-    marginTop: -26,
-    paddingTop: 10,
-    paddingHorizontal: 18,
-    paddingBottom: 50,
+  sheetBackground: {
     backgroundColor: "rgba(248, 248, 248, 0.98)",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
 
-  topHandle: {
+  sheetShadow: {
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    elevation: 12,
+  },
+
+  handleContainer: {
+    height: HANDLE_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  handleIndicator: {
     width: 54,
     height: 5,
-    backgroundColor: "#D3D3D3",
     borderRadius: 4,
-    alignSelf: "center",
-    marginBottom: 18,
+    backgroundColor: "#D3D3D3",
+  },
+
+  contentContainer: {
+    paddingTop: 6,
+    paddingHorizontal: 18,
+    paddingBottom: 50,
   },
 
   profileRow: {
