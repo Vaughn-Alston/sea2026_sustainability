@@ -22,6 +22,28 @@ const RECORD_ICON = require("../../assets/camera-icons/record.png");
 const HD_ICON = require("../../assets/camera-icons/hd.png");
 const ARROW_ICON = require("../../assets/camera-icons/arrow.png");
 
+const EDIT_ICONS = [
+  [
+    { id: "text", source: require("../../assets/camera-icons/edit-tools/text.png"), size: 25 },
+    { id: "draw", source: require("../../assets/camera-icons/edit-tools/draw.png"), size: 23 },
+    { id: "sticker", source: require("../../assets/camera-icons/edit-tools/sticker.png"), size: 23 },
+    { id: "scissors", source: require("../../assets/camera-icons/edit-tools/scissors.png"), size: 23 },
+  ],
+  [
+    { id: "music", source: require("../../assets/camera-icons/edit-tools/music.png"), size: 25 },
+    { id: "facescan", source: require("../../assets/camera-icons/edit-tools/facescan.png"), size: 26 },
+    { id: "smiley", source: require("../../assets/camera-icons/edit-tools/smiley.png"), size: 26 },
+    { id: "enhance", source: require("../../assets/camera-icons/edit-tools/enhance.png"), large: true },
+  ],
+  [
+    { id: "wand", source: require("../../assets/camera-icons/edit-tools/wand.png"), size: 25 },
+    { id: "eraser", source: require("../../assets/camera-icons/edit-tools/eraser.png"), size: 24 },
+    { id: "paperclip", source: require("../../assets/camera-icons/edit-tools/paperclip.png"), size: 26 },
+    { id: "crop", source: require("../../assets/camera-icons/edit-tools/crop.png"), size: 25 },
+    { id: "timer", source: require("../../assets/camera-icons/edit-tools/timer.png"), size: 24 },
+  ],
+];
+
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState("back");
@@ -67,8 +89,32 @@ export default function CameraScreen({ navigation }) {
         <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} />
         <SafeAreaView style={styles.overlay}>
           <TouchableOpacity style={styles.closeButton} onPress={() => setPhotoUri(null)}>
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Ionicons name="close" size={26} color="#fff" />
           </TouchableOpacity>
+
+          <View style={styles.editIconsRail}>
+            {EDIT_ICONS.map((group, groupIndex) => (
+              <View
+                key={groupIndex}
+                style={[
+                  styles.editIconsGroup,
+                  groupIndex !== EDIT_ICONS.length - 1 && styles.editIconsGroupSpacing,
+                ]}
+              >
+                {group.map((icon) => (
+                  <Image
+                    key={icon.id}
+                    source={icon.source}
+                    style={[
+                      styles.editIcon,
+                      { width: icon.large ? 34 : icon.size, height: icon.large ? 34 : icon.size },
+                    ]}
+                    resizeMode="contain"
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
 
           <Image source={CLEANUP_STAMP} style={styles.cleanupStamp} resizeMode="contain" />
 
@@ -257,14 +303,21 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginTop: 12,
     marginLeft: 18,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "700",
+  editIconsRail: {
+    position: "absolute",
+    top: 60,
+    right: 16,
+    alignItems: "center",
+  },
+  editIconsGroup: {
+    alignItems: "center",
+  },
+  editIconsGroupSpacing: {
+    marginBottom: 5,
+  },
+  editIcon: {
+    marginBottom: 20,
   },
   cleanupStamp: {
     position: "absolute",
