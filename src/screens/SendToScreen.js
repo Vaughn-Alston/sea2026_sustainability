@@ -225,7 +225,11 @@ export default function SendToScreen({ navigation, route }) {
   );
 
   const handleSend = () => {
-    setMarkPopupVisible(true);
+    if (photoUri) {
+      setMarkPopupVisible(true);
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
@@ -454,7 +458,7 @@ export default function SendToScreen({ navigation, route }) {
         }}
         onViewImpact={() => {
           setMarkPopupVisible(false);
-          navigation.navigate("Impact");
+          navigation.replace("Impact");
         }}
       />
     </View>
