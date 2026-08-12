@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     backgroundColor: "#000",
+    borderTopColor: "#1A1A1A",
   },
   grayRectangle: {
     flexDirection: "row",
