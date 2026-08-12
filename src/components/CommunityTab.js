@@ -1,18 +1,38 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const MELISSA_BITMOJI = require("../../assets/bitmoji-icons/Melissa Lazenby_SEA.png");
-const KEZIAH_BITMOJI = require("../../assets/bitmoji-icons/Keziah Muyna_SEA.png");
-const VAUGHN_BITMOJI = require("../../assets/bitmoji-icons/Vaughn Alston_SEA.png");
+import { supabase } from "../lib/supabase";
 
-const CONNECTIONS = [
-  { id: "1", name: "Melissa Lazenby", username: "melissalazer", timesMet: 8, avatar: MELISSA_BITMOJI },
-  { id: "2", name: "keziah muyna", username: "kezm", timesMet: 6, avatar: KEZIAH_BITMOJI },
-  { id: "3", name: "Vaughn", username: "vaughnnn", timesMet: 5, avatar: VAUGHN_BITMOJI },
-];
+const CONNECTION_USERNAMES = ["shawn", "sabrina", "jade"];
+const TIMES_MET = { shawn: 8, sabrina: 6, jade: 5 };
+
 
 export default function CommunityTab() {
+  const [connections, setConnections] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, username, avatar")
+        .in("username", CONNECTION_USERNAMES);
+
+      if (error) {
+        console.log("Connections failed to load", error.message);
+        return;
+      }
+
+      if (!cancelled) setConnections(data ?? []);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.introText}>
@@ -21,20 +41,26 @@ export default function CommunityTab() {
       </Text>
 
       <View style={styles.card}>
-        {CONNECTIONS.map((person, index) => (
+        {connections.map((person, index) => (
           <View
             key={person.id}
             style={[
               styles.row,
-              index !== CONNECTIONS.length - 1 && styles.rowDivider,
+              index !== connections.length - 1 && styles.rowDivider,
             ]}
           >
-            <Image source={person.avatar} style={styles.avatar} />
+            {person.avatar ? (
+              <Image source={{ uri: person.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarEmpty]} />
+            )}
 
             <View style={styles.textBlock}>
-              <Text style={styles.name}>{person.name}</Text>
+              <Text style={styles.name}>{person.username}</Text>
               <Text style={styles.username}>{person.username}</Text>
-              <Text style={styles.metLabel}>MET {person.timesMet} TIMES</Text>
+              <Text style={styles.metLabel}>
+                MET {TIMES_MET[person.username] ?? 3} TIMES
+              </Text>
             </View>
 
             <Pressable style={styles.addButton}>
@@ -51,7 +77,6 @@ export default function CommunityTab() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -91,6 +116,9 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     resizeMode: "cover",
+  },
+  avatarEmpty: {
+    backgroundColor: "#D9D9D9",
   },
 
   textBlock: {
