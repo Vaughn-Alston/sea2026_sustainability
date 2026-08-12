@@ -229,6 +229,10 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.tag}>
+                <Text style={styles.tagText}>👻 3,506</Text>
+              </View>
+
+              <View style={styles.tag}>
                 <Text style={styles.tagText}>♓ Pisces</Text>
               </View>
 
@@ -240,18 +244,15 @@ export default function ProfileScreen() {
                 style={styles.tag}
                 onPress={() => navigation.navigate("Rewards")}
               >
-                <Text style={styles.tagText}>🥉 Rewards</Text>
+                <Text style={styles.tagText}>🥉 Bronze Leader</Text>
               </Pressable>
 
-               <View style={styles.tag}>
-                  {/* Here I will make a add topic chat button */}
-                <Text style={styles.tagText}>:bronzemedal:  Cancer</Text>
-              </View>
-
-              <View style={styles.tag}>
-                  {/* Here I will make a add topic chat button */}
-                <Text style={styles.tagText}>:bronzemedal:  Cancer</Text>
-              </View>
+              <Pressable style={[styles.tag, styles.topicChatTag]}>
+                <View style={styles.topicChatIcon}>
+                  <View style={styles.topicChatIconTail} />
+                </View>
+                <Text style={styles.tagText}>Add Topic Chat ›</Text>
+              </Pressable>
 
             </View>
 
@@ -482,16 +483,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#DDDDDD",
     borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 4,
+    marginBottom: 6,
   },
 
   tagText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "#555555",
+  },
+
+  topicChatTag: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  topicChatIcon: {
+    width: 18,
+    height: 15,
+    borderRadius: 4,
+    backgroundColor: "#18A9F2",
+    marginRight: 7,
+  },
+
+  topicChatIconTail: {
+    position: "absolute",
+    right: 1,
+    bottom: -3,
+    width: 6,
+    height: 6,
+    backgroundColor: "#18A9F2",
+    transform: [{ rotate: "45deg" }],
   },
 
   goldFeatureCard: {
