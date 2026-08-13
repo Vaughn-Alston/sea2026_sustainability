@@ -13,7 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MarkPopUp from "../components/MarkPopUp";
 
 import SendIcon from "../../assets/camera-icons/send.svg";
-import { fetchMyFriends, fetchMyProfile } from "../lib/eventsAPI";
+import { fetchMyFriends, fetchMyProfile, uploadStory } from "../lib/eventsAPI";
 
 const JADE_BITMOJI = require("../../assets/bitmoji-icons/Jade Quinonez_SEA.png");
 const JAELIN_BITMOJI = require("../../assets/bitmoji-icons/Jaelin Taylor_SDA.png");
@@ -45,6 +45,14 @@ const STORIES = [
     subtitle: "Friends, Followers, and Everyone",
   },
 ];
+
+const SEED_BOMB_EVENT_ID = 12;
+const STORY_TARGET_IDS = new Set([
+  "spotlight",
+  "story-friends",
+  "story-public",
+  "story-custom",
+]);
 
 const TOP_GROUPS = [
   {
@@ -164,6 +172,7 @@ export default function SendToScreen({ navigation, route }) {
   const [showMoreStories, setShowMoreStories] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [markPopupVisible, setMarkPopupVisible] = useState(false);
+  const [sending, setSending] = useState(false);
 
   // friends from the db
   const [friends, setFriends] = useState([]);
@@ -268,13 +277,30 @@ export default function SendToScreen({ navigation, route }) {
     [selected, selectableNames],
   );
 
-  const handleSend = () => {
-    if (photoUri) {
-      setMarkPopupVisible(true);
-    } else {
-      navigation.goBack();
+  const handleSend = async () => {
+  if (sending) return;
+
+  const postingToStory = Array.from(selected).some((id) =>
+    STORY_TARGET_IDS.has(id),
+  );
+
+  if (photoUri && postingToStory) {
+    setSending(true);
+    try {
+      await uploadStory(photoUri, SEED_BOMB_EVENT_ID);
+    } catch (error) {
+      console.log("Story upload failed", error.message);
+    } finally {
+      setSending(false);
     }
-  };
+  }
+
+  if (photoUri) {
+    setMarkPopupVisible(true);
+  } else {
+    navigation.goBack();
+  }
+};
 
   return (
     <View style={styles.screen}>

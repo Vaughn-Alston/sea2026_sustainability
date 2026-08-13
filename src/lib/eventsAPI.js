@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import { isPastEvent } from "../../utils/datetimeUtil";
+import * as FileSystem from "expo-file-system/legacy";
+import { decode } from "base64-arraybuffer";
 
 /**
  * eventsApi
@@ -255,4 +257,62 @@ export async function fetchMyProfile() {
 
   if (error) throw error;
   return data ?? null;
+}
+
+const STORY_BUCKET = "event_story";
+
+const EXT_TO_MIME = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
+};
+
+// upload a local photo to the event_story bucket, then record it against an event
+export async function uploadStory(fileUri, eventId) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const fileExt = fileUri.split("?")[0].split(".").pop().toLowerCase();
+  const filePath = `${eventId}_${Date.now()}.${fileExt}`;
+  const contentType = EXT_TO_MIME[fileExt] ?? "image/jpeg";
+
+  // fetch().blob() is unreliable in Expo — read base64 and decode to ArrayBuffer
+  const base64 = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  const { error: uploadError } = await supabase.storage
+    .from(STORY_BUCKET)
+    .upload(filePath, decode(base64), { contentType });
+
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage
+    .from(STORY_BUCKET)
+    .getPublicUrl(filePath);
+
+  const { error: insertError } = await supabase.from("event_story").insert({
+    event: Number(eventId),
+    media: urlData.publicUrl,
+    posted_by: user?.id ?? null,
+  });
+
+  if (insertError) throw insertError;
+  return urlData.publicUrl;
+}
+
+// one event's stories, oldest first so the viewer plays them in order
+export async function fetchEventStories(eventId) {
+  const { data, error } = await supabase
+    .from("event_story")
+    .select("id, media, date_added, profiles:posted_by(username, avatar)")
+    .eq("event", Number(eventId))
+    .order("date_added", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
 }

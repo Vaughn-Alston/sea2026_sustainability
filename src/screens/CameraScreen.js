@@ -12,7 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MarkPopUp from "../components/MarkPopUp";
 import { useIsFocused } from "@react-navigation/native";
 
-const CLEANUP_STAMP = require("../../assets/stickers/group-141.png");
+const CLEANUP_STAMP = require("../../assets/stickers/seedbombstamp.png");
 
 const NOTIF_ICON = require("../../assets/camera-icons/notif.png");
 const FRIEND_ICON = require("../../assets/camera-icons/friend.png");
