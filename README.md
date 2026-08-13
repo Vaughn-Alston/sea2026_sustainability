@@ -53,7 +53,8 @@ The idea is that discovery, motivation, and participation already live on Snap -
 
 <div align="center">
 - **Map discovery** - volunteer events and drop-in spots appear as pins on the Snap Map, with a bottom sheet listing everything nearby.
-  <img width="295" height="640" alt="Simulator Screen Recording - iPhone 17 Pro - 2026-08-12 at 04 38 48" src="https://github.com/user-attachments/assets/8fc038f7-0487-4380-a7f4-7624ab594a3f" />
+
+<img width="295" height="640" alt="Simulator Screen Recording - iPhone 17 Pro - 2026-08-12 at 04 38 48" src="https://github.com/user-attachments/assets/8fc038f7-0487-4380-a7f4-7624ab594a3f" />
 
 - **Two kinds of opportunity** - scheduled events you RSVP to, and anytime drop-ins (food banks, community gardens, fixit clinics) that show live open/closed status from their opening hours.
 
