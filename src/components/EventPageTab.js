@@ -19,6 +19,7 @@ import {
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import SendIcon from "../../assets/camera-icons/send.svg";
+import StoryViewer from "./storyViewer";
 
 import {
   formatEventWhen,
@@ -40,6 +41,7 @@ import {
   fetchMySavedImpactIds,
   rsvpToEvent,
   toggleSavedImpact,
+  fetchEventStories,
 } from "../lib/eventsAPI";
 
 const HANDLE_HEIGHT = 24;
@@ -82,6 +84,11 @@ const EventPageTab = forwardRef(function EventPageTab(
 
   // drop-ins can't be rsvp'd, so they track saved state instead
   const [saved, setSaved] = useState(false);
+
+  // stories for this event - drives the tappable ring on the thumbnail
+  const [stories, setStories] = useState([]);
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
+  const hasStories = stories.length > 0;
 
   const snapPoints = useMemo(
     () => [COLLAPSED_HEIGHT + HANDLE_HEIGHT, "50%", "90%"],
@@ -152,6 +159,30 @@ const EventPageTab = forwardRef(function EventPageTab(
       cancelled = true;
     };
   }, [event]);
+
+  // stories load per-event, separate from rsvp/save state
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!event) {
+      setStories([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const rows = await fetchEventStories(event.id);
+        if (!cancelled) setStories(rows);
+      } catch (error) {
+        console.log("Story fetch failed", error.message);
+        if (!cancelled) setStories([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [event?.id]);
 
   const isEvent = event?.kind === "event";
   const hasRsvp = rsvpStatus != null;
@@ -288,223 +319,232 @@ const EventPageTab = forwardRef(function EventPageTab(
     : null;
 
   return (
-    <BottomSheet
-      ref={sheetRef}
-      index={-1}
-      snapPoints={snapPoints}
-      enableDynamicSizing={false}
-      enablePanDownToClose={false}
-      handleComponent={SheetHandle}
-      backgroundStyle={styles.sheetBackground}
-      style={styles.sheetShadow}
-    >
-      {/* show nothing until caller sets event */}
-      {event ? (
-        <BottomSheetScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.titleRow}>
-            {/* story thumbnail */}
-            <Pressable
-              style={styles.storyRing}
-              onPress={() => console.log("Open story", event.id)}
-              hitSlop={6}
-            >
-              {event.thumbnail ? (
-                <Image
-                  source={{ uri: event.thumbnail }}
-                  style={styles.storyImage}
-                />
-              ) : (
-                <View style={[styles.storyImage, styles.storyFallback]} />
-              )}
-            </Pressable>
+    <>
+      <BottomSheet
+        ref={sheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        enablePanDownToClose={false}
+        handleComponent={SheetHandle}
+        backgroundStyle={styles.sheetBackground}
+        style={styles.sheetShadow}
+      >
+        {/* show nothing until caller sets event */}
+        {event ? (
+          <BottomSheetScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.titleRow}>
+              {/* story thumbnail - ring + tap only when this event has stories */}
+              <Pressable
+                style={hasStories ? styles.storyRing : styles.storyRingInactive}
+                onPress={() => hasStories && setStoryViewerVisible(true)}
+                disabled={!hasStories}
+                hitSlop={6}
+              >
+                {event.thumbnail ? (
+                  <Image
+                    source={{ uri: event.thumbnail }}
+                    style={styles.storyImage}
+                  />
+                ) : (
+                  <View style={[styles.storyImage, styles.storyFallback]} />
+                )}
+              </Pressable>
 
-            <View style={styles.rightColumn}>
-              {/* title left, close button pinned top right */}
-              <View style={styles.titleHeaderRow}>
-                <Text style={styles.title} numberOfLines={2}>
-                  {event.name}
+              <View style={styles.rightColumn}>
+                {/* title left, close button pinned top right */}
+                <View style={styles.titleHeaderRow}>
+                  <Text style={styles.title} numberOfLines={2}>
+                    {event.name}
+                  </Text>
+
+                  <Pressable
+                    style={styles.closeButton}
+                    onPress={handleClose}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="close" size={20} color="#1A1A1A" />
+                  </Pressable>
+                </View>
+
+                {/* details span the full width of this column */}
+                <View style={styles.detailsBlock}>
+                  {!!when && <Text style={styles.subtitle}>{when}</Text>}
+
+                  {(!!relativeText || !!metaLine) && (
+                    <Text style={styles.metaText}>
+                      {!!relativeText && (
+                        <Text
+                          style={
+                            isClosed ? styles.closedText : styles.relativeText
+                          }
+                        >
+                          {relativeText}
+                        </Text>
+                      )}
+                      {!!relativeText && !!metaLine && " · "}
+                      {metaLine}
+                    </Text>
+                  )}
+
+                  {!!event.organizationName && (
+                    <View style={styles.hostRow}>
+                      <Text style={styles.hostLine}>
+                        Hosted by{" "}
+                        <Text style={styles.hostNameTitle}>
+                          {event.organizationName}
+                        </Text>
+                      </Text>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={14}
+                        color="#3E7A4E"
+                      />
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              {/* primary: rsvp for events (black when RSVP'D), save for drop-ins */}
+              <Pressable
+                style={[
+                  styles.button,
+                  styles.primaryButton,
+                  actionActive ? styles.buttonBlack : styles.buttonNeutral,
+                ]}
+                onPress={handleActionPress}
+              >
+                <Ionicons
+                  name={actionActive ? "bookmark" : "bookmark-outline"}
+                  size={15}
+                  color={actionActive ? "#FFFFFF" : "#111111"}
+                />
+                <Text
+                  style={[
+                    styles.buttonLabel,
+                    actionActive && styles.buttonLabelLight,
+                  ]}
+                >
+                  {isEvent
+                    ? hasRsvp
+                      ? "RSVP'D"
+                      : "RSVP"
+                    : saved
+                      ? "Saved"
+                      : "Save"}
+                </Text>
+              </Pressable>
+
+              {/* drive time */}
+              <Pressable
+                style={[styles.button, styles.buttonNeutral, styles.driveButton]}
+                onPress={handleDirectionsPress}
+              >
+                <Ionicons name="car" size={21} color="#000000" />
+                <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
+              </Pressable>
+
+              {/* send - hands off to SendTo */}
+              <Pressable
+                style={[styles.button, styles.buttonAccent, styles.sendButton]}
+                onPress={handleSendPress}
+              >
+                {/* Replaced Ionicons with your custom SVG */}
+                <SendIcon width={19} height={19} />
+              </Pressable>
+            </View>
+
+            {/* each section is its own white card on the grey sheet */}
+            {isEvent && summary.goingCount > 0 && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  {summary.goingCount} going
+                  {summary.friendCount > 0 &&
+                    ` · ${summary.friendCount} friends attending`}
                 </Text>
 
-                <Pressable
-                  style={styles.closeButton}
-                  onPress={handleClose}
-                  hitSlop={10}
-                >
-                  <Ionicons name="close" size={20} color="#1A1A1A" />
-                </Pressable>
-              </View>
-
-              {/* details span the full width of this column */}
-              <View style={styles.detailsBlock}>
-                {!!when && <Text style={styles.subtitle}>{when}</Text>}
-
-                {(!!relativeText || !!metaLine) && (
-                  <Text style={styles.metaText}>
-                    {!!relativeText && (
-                      <Text
-                        style={
-                          isClosed ? styles.closedText : styles.relativeText
-                        }
-                      >
-                        {relativeText}
-                      </Text>
+                {/* same stack as the list card - friends only, grey when no avatar */}
+                {stackAttendees.length > 0 && (
+                  <View style={styles.avatarGroup}>
+                    {stackAttendees.map((attendee, index) =>
+                      attendee.image ? (
+                        <Image
+                          key={attendee.id ?? index}
+                          source={{ uri: attendee.image }}
+                          style={[
+                            styles.attendeeAvatar,
+                            index > 0 && styles.overlappingAvatar,
+                          ]}
+                        />
+                      ) : (
+                        <View
+                          key={attendee.id ?? index}
+                          style={[
+                            styles.attendeeAvatar,
+                            styles.attendeeAvatarEmpty,
+                            index > 0 && styles.overlappingAvatar,
+                          ]}
+                        />
+                      ),
                     )}
-                    {!!relativeText && !!metaLine && " · "}
-                    {metaLine}
-                  </Text>
-                )}
-
-                {!!event.organizationName && (
-                  <View style={styles.hostRow}>
-                    <Text style={styles.hostLine}>
-                      Hosted by{" "}
-                      <Text style={styles.hostNameTitle}>
-                        {event.organizationName}
-                      </Text>
-                    </Text>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={14}
-                      color="#3E7A4E"
-                    />
                   </View>
                 )}
               </View>
-            </View>
-          </View>
+            )}
 
-          <View style={styles.buttonRow}>
-            {/* primary: rsvp for events (black when RSVP'D), save for drop-ins */}
-            <Pressable
-              style={[
-                styles.button,
-                styles.primaryButton,
-                actionActive ? styles.buttonBlack : styles.buttonNeutral,
-              ]}
-              onPress={handleActionPress}
-            >
-              <Ionicons
-                name={actionActive ? "bookmark" : "bookmark-outline"}
-                size={15}
-                color={actionActive ? "#FFFFFF" : "#111111"}
-              />
-              <Text
-                style={[
-                  styles.buttonLabel,
-                  actionActive && styles.buttonLabelLight,
-                ]}
-              >
-                {isEvent
-                  ? hasRsvp
-                    ? "RSVP'D"
-                    : "RSVP"
-                  : saved
-                    ? "Saved"
-                    : "Save"}
-              </Text>
-            </Pressable>
+            {!!event.description && (
+              <View style={styles.card}>
+                <Text style={styles.cardHeading}>About</Text>
+                <Text style={styles.cardBody}>{event.description}</Text>
+              </View>
+            )}
 
-            {/* drive time */}
-            <Pressable
-              style={[styles.button, styles.buttonNeutral, styles.driveButton]}
-            >
-              <Ionicons name="car" size={21} color="#000000" />
-              <Text style={styles.buttonLabel}>{driveTime ?? "Go"}</Text>
-            </Pressable>
-
-            {/* send - hands off to SendTo */}
-            {/* send - hands off to SendTo */}
-            <Pressable
-              style={[styles.button, styles.buttonAccent, styles.sendButton]}
-              onPress={handleSendPress}
-            >
-              {/* Replaced Ionicons with your custom SVG */}
-              <SendIcon width={19} height={19} />
-            </Pressable>
-          </View>
-
-          {/* each section is its own white card on the grey sheet */}
-          {isEvent && summary.goingCount > 0 && (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>
-                {summary.goingCount} going
-                {summary.friendCount > 0 &&
-                  ` · ${summary.friendCount} friends attending`}
-              </Text>
+              <Text style={styles.cardHeading}>Event Details</Text>
 
-              {/* same stack as the list card - friends only, grey when no avatar */}
-              {stackAttendees.length > 0 && (
-                <View style={styles.avatarGroup}>
-                  {stackAttendees.map((attendee, index) =>
-                    attendee.image ? (
-                      <Image
-                        key={attendee.id ?? index}
-                        source={{ uri: attendee.image }}
-                        style={[
-                          styles.attendeeAvatar,
-                          index > 0 && styles.overlappingAvatar,
-                        ]}
-                      />
-                    ) : (
-                      <View
-                        key={attendee.id ?? index}
-                        style={[
-                          styles.attendeeAvatar,
-                          styles.attendeeAvatarEmpty,
-                          index > 0 && styles.overlappingAvatar,
-                        ]}
-                      />
-                    ),
-                  )}
+              {!!when && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={17} color="#000000" />
+                  <Text style={styles.detailText}>{when}</Text>
+                </View>
+              )}
+
+              {!!fullAddress && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={17} color="#000000" />
+                  <Text style={styles.detailText}>{fullAddress}</Text>
+                </View>
+              )}
+
+              {!!event.organizationName && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="people-outline" size={17} color="#000000" />
+
+                  <Text style={styles.detailText}>
+                    Hosted by{" "}
+                    <Text style={styles.hostNameDetails}>
+                      {event.organizationName}
+                    </Text>{" "}
+                    <Ionicons name="checkmark-circle" size={13} color="#3E7A4E" />
+                  </Text>
                 </View>
               )}
             </View>
-          )}
+          </BottomSheetScrollView>
+        ) : null}
+      </BottomSheet>
 
-          {!!event.description && (
-            <View style={styles.card}>
-              <Text style={styles.cardHeading}>About</Text>
-              <Text style={styles.cardBody}>{event.description}</Text>
-            </View>
-          )}
-
-          <View style={styles.card}>
-            <Text style={styles.cardHeading}>Event Details</Text>
-
-            {!!when && (
-              <View style={styles.detailRow}>
-                <Ionicons name="time-outline" size={17} color="#000000" />
-                <Text style={styles.detailText}>{when}</Text>
-              </View>
-            )}
-
-            {!!fullAddress && (
-              <View style={styles.detailRow}>
-                <Ionicons name="location-outline" size={17} color="#000000" />
-                <Text style={styles.detailText}>{fullAddress}</Text>
-              </View>
-            )}
-
-            {!!event.organizationName && (
-              <View style={styles.detailRow}>
-                <Ionicons name="people-outline" size={17} color="#000000" />
-
-                <Text style={styles.detailText}>
-                  Hosted by{" "}
-                  <Text style={styles.hostNameDetails}>
-                    {event.organizationName}
-                  </Text>{" "}
-                  <Ionicons name="checkmark-circle" size={13} color="#3E7A4E" />
-                </Text>
-              </View>
-            )}
-          </View>
-        </BottomSheetScrollView>
-      ) : null}
-    </BottomSheet>
+      <StoryViewer
+        visible={storyViewerVisible}
+        stories={stories}
+        onClose={() => setStoryViewerVisible(false)}
+      />
+    </>
   );
 });
 
@@ -553,6 +593,14 @@ const styles = StyleSheet.create({
     borderRadius: (STORY_IMAGE_SIZE + 8) / 2,
     borderWidth: 2,
     borderColor: "#3DA9FC",
+    padding: 2,
+  },
+  // same footprint as storyRing but no visible ring, so layout doesn't shift
+  // when an event has no stories
+  storyRingInactive: {
+    borderRadius: (STORY_IMAGE_SIZE + 8) / 2,
+    borderWidth: 2,
+    borderColor: "transparent",
     padding: 2,
   },
   storyImage: {
